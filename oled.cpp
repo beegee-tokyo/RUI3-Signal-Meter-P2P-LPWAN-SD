@@ -438,7 +438,7 @@ void display_show_menu(char *menu[], uint8_t menu_len, uint8_t sel_menu, uint8_t
 		{
 			if (idx + 1 == sel_item)
 			{
-				sprintf(line_str, "(X) %s", menu[idx]);
+				sprintf(line_str, "==> %s", menu[idx]);
 			}
 			else
 			{

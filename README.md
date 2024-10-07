@@ -7,6 +7,19 @@
 #### ⚠️ IMPORTANT ⚠️        
 This firmware requires at least RUI3 V4.1.1 or newer.
 
+#### ⚠️ ATTENTION ⚠️        
+Requires the following Arduino libraries.
+
+| Library                      | Get from Library Manager                       |
+| ---                          | ---                                            |
+| ArduinoJSON version 6.x.x    | http://librarymanager/All#ArduinoJson          |
+| SD                           | http://librarymanager/All#SD                   |
+| Melopero RV3028              | http://librarymanager/All#RV3028               |
+| Sparkfun LIS3DH              | http://librarymanager/All#LIS3DH               |
+| Sparkfun u-Blox GNSS library | http://librarymanager/All#SparkFun_u-blox_GNSS |
+| nRF OLED display             | http://librarymanager/All#nRF52_OLED           |
+| CayenneLPP                   | http://librarymanager/All#CayenneLPP           |
+
 ----
 
 # Content
@@ -21,6 +34,11 @@ This firmware requires at least RUI3 V4.1.1 or newer.
   - [LoRa P2P](#lora-p2p)
   - [LoRaWAN LinkCheck](#lorawan-linkcheck)
   - [LoRaWAN Field Tester (requires backend server)](#lorawan-field-tester)
+- [Log files (If SD card is present)](#log-files)
+  - [AT command for log files](#at-commands-for-log-files)
+  - [Linkcheck mode log format](#linkcheck-mode-log-format)
+  - [Field Tester mode log format](#field-tester-mode-log-format)
+  - [P2P mode log format](#p2p-mode-log-format)
 - [Enclosure](#enclosure)
 - [Firmware](#firmware)
 
@@ -65,11 +83,13 @@ Extract from the _**LoRaWAN 1.0.3 Specification**_:
 
 In addition, it supports the RAK10701 Field Tester protocol. The advantage of the Field Tester protocol is that it provides more information about the test, including distances to the gateways. The disadvantage is that this protocol requires a backend server to process the information and send it back to the device.
 
-This examples includes three custom AT commands:     
+This examples includes multiple custom AT commands:     
 - **`ATC+SENDINT`** to set the send interval time or heart beat time. The device will send a payload with this interval. The time is set in seconds, e.g. **`AT+SENDINT=600`** sets the send interval to 600 seconds or 10 minutes.    
 - **`ATC+MODE`** to set the test mode. 0 using LPWAN LinkCheck, 1 using LoRa P2P, 2 using Field Tester protocol.
 - **`ATC+STATUS`** to get some status information from the device.    
 - **`ATC+PCKG`** to setup a custom payload that is used in the uplink packets.
+- **`ATC+LOGS`** to retrieve or erase saved log files from the SD card (if SD card is present). See [AT command for log files](#at-commands-for-log-files)
+- **`ATC+RTC`** to set or get time of RTC. Set format = [yyyy:mm:dd:hh:MM] (discard leading zeros!)
 
 [Back to top](#content)
 
@@ -331,6 +351,70 @@ In Field Tester Mode a backend server has to be setup as integration in the LoRa
 More information about available backend solutions can be found in the [RAK10701 documentation](https://docs.rakwireless.com/Product-Categories/WisNode/RAK10701-P/Quickstart/#lorawan-network-servers-guide-for-rak10701-p-field-tester-pro)
 
 [Back to top](#content)
+
+----
+
+# Log files (If SD card is present)
+
+If a SD card is present, the results of the coverage tests are written in CSV format to the SD card.    
+The files start from 0000-log.csv and on every restart a new file with an upcounting number is created.    
+
+## AT commands for log files
+
+_**`ATC+LOGS=?`**_ is used to retrieve the log files over the USB port. This makes it possible to read the log files without removing the SD card from the device.    
+
+_**`ATC+LOGS=e`**_ is used to erase all log files from the SD card.    
+
+----
+
+## Linkcheck mode log format
+
+When in Linkcheck mode for LoRaWAN, the log file has the following format:    
+
+### If location is enabled
+
+time;Mode;Gw;Lat;Lng;RX RSSI;RX SNR;Demod;Lost
+
+### If location is disabled
+
+time;Mode;Gw;RX RSSI;RX SNR;Demod;Lost
+
+| time | Mode | Gw | Lat | Lng | RX RSSI | RX SNR | Demod | Lost |
+| ---  | ---  | --- | --- | --- | ---    | ---    | ---   | ---  |
+| Time stamp (available if LNS has provided the time or if a RTC module is attached) | 0 for LinkCheck mode | Number of gateways | Latitude (if location is active and location fix) | Longitude (if location is active and location fix) | RSSI of downlink | SNR of downlink | demod value | number of lost packets |
+| ---  | ---  | --- | --- | --- | ---    | ---    | ---   | ---  |
+
+----
+
+## Field Tester mode log format
+
+When in Field Tester mode for LoRaWAN, the log file has the following format:    
+
+time;Mode;Gw;Lat;Lng;min RSSI;max RSSI;RX RSSI;RX SNR;min Dist;max Dist
+
+| time | Mode | Gw | Lat | Lng | min RSSI | max RSSI | RX RSSI | RX SNR | min Dist | max Dist |
+| ---  | ---  | --- | --- | --- | ---     | ---      | ---     | ---    | ---      | ---      |
+| Time stamp (available if LNS has provided the time or if a RTC module is attached) | 2 for Field Tester mode | Number of gateways | Latitude (can be 0.0 if no location fix, e.g. indoor testing) | Longitude (can be 0.0 if no location fix, e.g. indoor testing) | min RSSI seen by gateways | max RSSI seen by gateways | RSSI of downlink | SNR of downlink | min distance to gateway(s) | max distance to gateway(s) |
+| ---  | ---  | --- | --- | --- | ---     | ---      | ---     | ---    | ---      | ---      |
+
+----
+
+## P2P mode log format
+
+When in Linkcheck mode for LoRaWAN, the log file has the following format:    
+
+### If location is enabled
+
+time;Mode;Lat;Lng;RX RSSI;RX SNR
+
+### If location is disabled
+
+time;Mode;RX RSSI;RX SNR
+
+| time | Mode | Lat | Lng | RX RSSI | RX SNR |
+| ---  | ---  | --- | --- | ---     | ---    |
+| Time stamp (available if LNS has provided the time or if a RTC module is attached) | 1 for LinkCheck mode | Latitude (if location is active and location fix) | Longitude (if location is active and location fix) | RSSI of downlink | SNR of downlink |
+| ---  | ---  | --- | --- | ---     | ---    |
 
 ----
 

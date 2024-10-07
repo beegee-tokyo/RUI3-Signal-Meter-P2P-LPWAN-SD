@@ -195,7 +195,11 @@ void send_packet(void *data)
 
 		if (g_custom_parameters.location_on)
 		{
-			poll_gnss();
+			if (!poll_gnss())
+			{
+				g_last_long = 0.0;
+				g_last_lat = 0.0;
+			}
 		}
 		if (api.lorawan.nwm.get())
 		{
@@ -1008,8 +1012,11 @@ void setup(void)
 		SysTime_t UnixEpoch;
 		read_rak12002();
 		SysTimeSet(UnixEpoch);
+
+		init_rtc_at();
 	}
 
+	// Initialize SD card
 	has_sd = init_sd();
 	if (!has_sd)
 	{

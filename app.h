@@ -85,6 +85,7 @@ bool init_interval_at(void);
 bool init_test_mode_at(void);
 bool init_custom_pckg_at(void);
 bool init_dump_logs_at(void);
+bool init_rtc_at(void);
 bool get_at_setting(void);
 bool save_at_setting(void);
 void set_linkcheck(void);

@@ -60,8 +60,11 @@ uint8_t max_sat = 0;
 uint8_t max_sat_unchanged = 0;
 
 /**
- * @brief Initialize the GNSS
+ * @brief Initialize GNSS module
  *
+ * @param true = power up module, false = keep module power off
+ * @return true Valid position found
+ * @return false No valid position
  */
 bool init_gnss(bool active)
 {

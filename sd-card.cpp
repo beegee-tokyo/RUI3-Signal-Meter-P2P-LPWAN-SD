@@ -11,11 +11,19 @@
 #include "app.h"
 #include <SD.h> //http://librarymanager/All#SD
 
+/** Forward declarations */
 void dir_sd(File dir);
 void dump_sd_file(const char *path);
 
+/** Pointer to current log file */
 File log_file;
 
+/**
+ * @brief Initialize SD card
+ * 
+ * @return true SD card found
+ * @return false no SD card found
+ */
 bool init_sd(void)
 {
 	digitalWrite(WB_IO2, HIGH);
@@ -101,6 +109,11 @@ bool init_sd(void)
 	return true;
 }
 
+/**
+ * @brief Send directory of a folder to the Serial port
+ * 
+ * @param dir 
+ */
 void dir_sd(File dir)
 {
 	digitalWrite(WB_IO2, HIGH);
@@ -130,6 +143,10 @@ void dir_sd(File dir)
 	}
 }
 
+/**
+ * @brief Send content of all files to the Serial port
+ * 
+ */
 void dump_all_sd_files(void)
 {
 	SD.begin(WB_SPI_CS);
@@ -175,6 +192,11 @@ void dump_all_sd_files(void)
 	SD.end();
 }
 
+/**
+ * @brief Send the content of a file to the Serial port
+ * 
+ * @param path Path as string
+ */
 void dump_sd_file(const char *path)
 {
 	digitalWrite(WB_IO2, HIGH);
@@ -203,6 +225,10 @@ void dump_sd_file(const char *path)
 	SD.end();
 }
 
+/**
+ * @brief Erase all files on the SD card
+ * 
+ */
 void clear_sd_file(void)
 {
 	digitalWrite(WB_IO2, HIGH);
@@ -230,6 +256,13 @@ void clear_sd_file(void)
 	SD.end();
 }
 
+/**
+ * @brief Create a new file on the SD card.
+ * 		Checks available files and generates a new file name
+ * 
+ * @return true File created
+ * @return false File could not be created
+ */
 bool create_sd_file(void)
 {
 	digitalWrite(WB_IO2, HIGH);
@@ -275,15 +308,29 @@ bool create_sd_file(void)
 		MYLOG("SD", "Writing Header to %s", file_name);
 		if (g_custom_parameters.test_mode == MODE_LINKCHECK)
 		{
-			log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"Lost\"");
+			if (g_custom_parameters.location_on)
+			{
+				log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"Lost\"");
+			}
+			else
+			{
+				log_file.println("\"time\";\"Mode\";\"Gw\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"Lost\"");
+			}
 		}
 		else if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
 		{
 			log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"min RSSI\";\"max RSSI\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\"");
 		}
-		else
+		else // P2P mode
 		{
-			log_file.println("\"time\";\"Mode\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\"");
+			if (g_custom_parameters.location_on)
+			{
+				log_file.println("\"time\";\"Mode\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\"");
+			}
+			else
+			{
+				log_file.println("\"time\";\"Mode\";\"RX RSSI\";\"RX SNR\"");
+			}
 		}
 		log_file.flush();
 		log_file.close();
@@ -296,6 +343,10 @@ bool create_sd_file(void)
 	return false;
 }
 
+/**
+ * @brief Write to the current log file
+ * 
+ */
 void write_sd_entry(void)
 {
 
@@ -320,35 +371,59 @@ void write_sd_entry(void)
 
 		if (g_custom_parameters.test_mode == MODE_LINKCHECK)
 		{
-			// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"Lost\"");
-		snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d",
-				 result.year, result.month, result.day, result.hour, result.min,
-				 result.mode, result.gw,
-				 result.lat, result.lng,
-				 result.rx_rssi,
-				 result.rx_snr,
-				 result.demod, result.lost);
+			if (g_custom_parameters.location_on)
+			{
+				// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"Lost\"");
+				snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d",
+						 result.year, result.month, result.day, result.hour, result.min,
+						 result.mode, result.gw,
+						 result.lat, result.lng,
+						 result.rx_rssi,
+						 result.rx_snr,
+						 result.demod, result.lost);
+			}
+			else
+			{
+				snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%d;%d;%d;%d",
+						 result.year, result.month, result.day, result.hour, result.min,
+						 result.mode, result.gw,
+						 result.rx_rssi,
+						 result.rx_snr,
+						 result.demod, result.lost);
+			}
 		}
 		else if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
 		{
 			// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"min RSSI\";\"max RSSI\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\"");
-		snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d",
-				 result.year, result.month, result.day, result.hour, result.min,
-				 result.mode, result.gw,
-				 result.lat, result.lng,
-				 result.min_rssi, result.max_rssi, result.rx_rssi,
-				 result.rx_snr,
-				 result.min_dst, result.max_dst);
+			snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d",
+					 result.year, result.month, result.day, result.hour, result.min,
+					 result.mode, result.gw,
+					 result.lat, result.lng,
+					 result.min_rssi, result.max_rssi, result.rx_rssi,
+					 result.rx_snr,
+					 result.min_dst, result.max_dst);
 		}
-		else
+		else // LoRa P2P
 		{
-			log_file.println("\"time\";\"Mode\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\"");
-		snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%.6f;%.6f;%d;%d",
-				 result.year, result.month, result.day, result.hour, result.min,
-				 result.mode, 
-				 result.lat, result.lng,
-				 result.rx_rssi,
-				 result.rx_snr);
+			if (g_custom_parameters.location_on)
+			{
+				// log_file.println("\"time\";\"Mode\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\"");
+				snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%.6f;%.6f;%d;%d",
+						 result.year, result.month, result.day, result.hour, result.min,
+						 result.mode,
+						 result.lat, result.lng,
+						 result.rx_rssi,
+						 result.rx_snr);
+			}
+			else
+			{
+				// log_file.println("\"time\";\"Mode\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\"");
+				snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%d",
+						 result.year, result.month, result.day, result.hour, result.min,
+						 result.mode,
+						 result.rx_rssi,
+						 result.rx_snr);
+			}
 		}
 		// snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d;%d;%d",
 		// 		 result.year, result.month, result.day, result.hour, result.min,

@@ -79,6 +79,11 @@ bool init_rak12002(void)
 	return true;
 }
 
+/**
+ * @brief Get time as UNIX timestamp
+ *
+ * @return uint32_t Unix timestamp
+ */
 uint32_t get_unixtime_rak12002(void)
 {
 	return rtc.getUnixTime();
@@ -123,6 +128,11 @@ void read_rak12002(void)
 	g_date_time.second = rtc.getSecond();
 }
 
+/**
+ * @brief Get the internal MCU time stamp
+ *      Saves MCU time in global structure g_date_time
+ *
+ */
 void get_mcu_time(void)
 {
 	char local_time[30] = {0};
