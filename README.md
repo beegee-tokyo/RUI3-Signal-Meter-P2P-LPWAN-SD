@@ -34,7 +34,7 @@ Requires the following Arduino libraries.
   - [LoRa P2P](#lora-p2p)
   - [LoRaWAN LinkCheck](#lorawan-linkcheck)
   - [LoRaWAN Field Tester (requires backend server)](#lorawan-field-tester)
-- [Log files (If SD card is present)](#log-files)
+- [Log files (If SD card is present)](#log-files-if-sd-card-is-present)
   - [AT command for log files](#at-commands-for-log-files)
   - [Linkcheck mode log format](#linkcheck-mode-log-format)
   - [Field Tester mode log format](#field-tester-mode-log-format)
