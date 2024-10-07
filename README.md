@@ -382,7 +382,7 @@ time;Mode;Gw;RX RSSI;RX SNR;Demod;Lost
 | time | Mode | Gw | Lat | Lng | RX RSSI | RX SNR | Demod | Lost |
 | ---  | ---  | --- | --- | --- | ---    | ---    | ---   | ---  |
 | Time stamp (available if LNS has provided the time or if a RTC module is attached) | 0 for LinkCheck mode | Number of gateways | Latitude (if location is active and location fix) | Longitude (if location is active and location fix) | RSSI of downlink | SNR of downlink | demod value | number of lost packets |
-| ---  | ---  | --- | --- | --- | ---    | ---    | ---   | ---  |
+| 2024-10-07-14-35 | 0 | 1 | 14.521355 | 121.106880 | -91 | 8 | 29 | 0  |
 
 ----
 
@@ -395,7 +395,7 @@ time;Mode;Gw;Lat;Lng;min RSSI;max RSSI;RX RSSI;RX SNR;min Dist;max Dist
 | time | Mode | Gw | Lat | Lng | min RSSI | max RSSI | RX RSSI | RX SNR | min Dist | max Dist |
 | ---  | ---  | --- | --- | --- | ---     | ---      | ---     | ---    | ---      | ---      |
 | Time stamp (available if LNS has provided the time or if a RTC module is attached) | 2 for Field Tester mode | Number of gateways | Latitude (can be 0.0 if no location fix, e.g. indoor testing) | Longitude (can be 0.0 if no location fix, e.g. indoor testing) | min RSSI seen by gateways | max RSSI seen by gateways | RSSI of downlink | SNR of downlink | min distance to gateway(s) | max distance to gateway(s) |
-| ---  | ---  | --- | --- | --- | ---     | ---      | ---     | ---    | ---      | ---      |
+| 2024-10-07-14-39 | 2 | 1 | 14.521355 | 121.106880 | -50 | -50 | -59 | 7 | 250 | 250      |
 
 ----
 
@@ -414,7 +414,7 @@ time;Mode;RX RSSI;RX SNR
 | time | Mode | Lat | Lng | RX RSSI | RX SNR |
 | ---  | ---  | --- | --- | ---     | ---    |
 | Time stamp (available if LNS has provided the time or if a RTC module is attached) | 1 for LinkCheck mode | Latitude (if location is active and location fix) | Longitude (if location is active and location fix) | RSSI of downlink | SNR of downlink |
-| ---  | ---  | --- | --- | ---     | ---    |
+| 2024-10-07-14-51 | 1 | 14.521355 | 121.106880 | -38 | 12    |
 
 ----
 

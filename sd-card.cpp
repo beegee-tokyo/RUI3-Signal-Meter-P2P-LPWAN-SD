@@ -84,26 +84,26 @@ bool init_sd(void)
 		return false;
 	}
 
-	File dir_file = SD.open("/", FILE_WRITE);
-	dir_sd(dir_file);
-	dir_file.close();
+	// File dir_file = SD.open("/", FILE_WRITE);
+	// dir_sd(dir_file);
+	// dir_file.close();
 
-	uint16_t file_num = 0;
-	sprintf((char *)file_name, "%04d-log.csv", file_num);
-	while (true)
-	{
-		if (SD.exists((const char *)file_name))
-		{
-			MYLOG("SD", "Content of %s:", file_name);
-			dump_sd_file((const char *)file_name);
-			file_num++;
-			sprintf((char *)file_name, "%04d-log.csv", file_num);
-		}
-		else
-		{
-			break;
-		}
-	}
+	// uint16_t file_num = 0;
+	// sprintf((char *)file_name, "%04d-log.csv", file_num);
+	// while (true)
+	// {
+	// 	if (SD.exists((const char *)file_name))
+	// 	{
+	// 		MYLOG("SD", "Content of %s:", file_name);
+	// 		dump_sd_file((const char *)file_name);
+	// 		file_num++;
+	// 		sprintf((char *)file_name, "%04d-log.csv", file_num);
+	// 	}
+	// 	else
+	// 	{
+	// 		break;
+	// 	}
+	// }
 
 	SD.end();
 	return true;

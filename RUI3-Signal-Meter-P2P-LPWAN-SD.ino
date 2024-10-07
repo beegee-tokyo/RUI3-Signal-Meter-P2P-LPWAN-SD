@@ -1009,13 +1009,17 @@ void setup(void)
 	has_rtc = init_rak12002();
 	if (has_rtc)
 	{
+		MYLOG("APP", "RTC found");
 		SysTime_t UnixEpoch;
 		read_rak12002();
 		SysTimeSet(UnixEpoch);
 
 		init_rtc_at();
 	}
-
+	else
+	{
+		MYLOG("APP", "No RTC found");
+	}
 	// Initialize SD card
 	has_sd = init_sd();
 	if (!has_sd)
@@ -1191,8 +1195,16 @@ void set_p2p(void)
 	api.lora.registerPSendCallback(send_cb_p2p);
 	// Enable RX mode
 	api.lora.precv(65533);
-	// Disable GNSS module
-	digitalWrite(WB_IO2, LOW);
+	if (g_custom_parameters.location_on)
+	{
+		// Enable GNSS module
+		digitalWrite(WB_IO2, HIGH);
+	}
+	else
+	{
+		// Disable GNSS module
+		digitalWrite(WB_IO2, LOW);
+	}
 }
 
 /**
