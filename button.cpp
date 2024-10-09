@@ -86,7 +86,7 @@ char *settings_lpw_menu[] = {"Back", "ADR", "DR", "TX", "Region"};
 uint8_t settings_lpw_menu_len = 5;
 
 /** Table with P2P bandwidths */
-char *p_bw_menu[] = {"500", "250", "125", "62.5", "41.67", "31.25", "20.83", "15.63", "10.4", "7.8"};
+char *p_bw_menu[] = {"125", "250", "500", "62.5", "41.67", "31.25", "20.83", "15.63", "10.4", "7.8"};
 
 /**
  * @brief Initialize button handler

@@ -60,14 +60,17 @@
 /** Custom flash parameters structure */
 struct custom_param_s
 {
-	uint8_t valid_flag = 0xAA;
+	uint16_t settings_crc = 0;
 	uint32_t send_interval = 0;
 	uint8_t test_mode = 0;
 	bool display_saver = true;
 	bool location_on = false;
 	uint8_t custom_packet[129] = {0x01, 0x02, 0x03, 0x04};
 	uint16_t custom_packet_len = 4;
+	bool dr_sweep_on = false;
 };
+// Structure size without CRC
+#define custom_params_len 11
 
 typedef enum test_mode_num
 {

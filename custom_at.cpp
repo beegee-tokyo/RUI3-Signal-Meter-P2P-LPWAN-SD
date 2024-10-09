@@ -9,6 +9,8 @@
  *
  */
 #include "app.h"
+// CRC algo
+#include "app_crc.h"
 
 #if defined(_VARIANT_RAK3172_) || defined(_VARIANT_RAK3172_SIP_)
 #define AT_PRINTF(...)              \
@@ -32,6 +34,9 @@
 
 /** Custom flash parameters */
 custom_param_s g_custom_parameters;
+
+/** Flag if CRC API needs initialization */
+bool crc_initialized = false;
 
 // Forward declarations
 int interval_send_handler(SERIAL_PORT port, char *cmd, stParam *param);
@@ -599,20 +604,33 @@ int status_handler(SERIAL_PORT port, char *cmd, stParam *param)
  */
 bool get_at_setting(void)
 {
+	if (!crc_initialized)
+	{
+		crcInit();
+		crc_initialized = true;
+	}
 	bool found_problem = false;
 
 	custom_param_s temp_params;
-	uint8_t *flash_value = (uint8_t *)&temp_params.valid_flag;
+	uint8_t *flash_value = (uint8_t *)&temp_params.settings_crc;
 	if (!api.system.flash.get(0, flash_value, sizeof(custom_param_s)))
 	{
-		MYLOG("AT_CMD", "Failed to read send interval from Flash");
+		MYLOG("AT_CMD", "Failed to read custom parameters from Flash");
 		return false;
 	}
-	MYLOG("AT_CMD", "Got flag: %02X", temp_params.valid_flag);
-	MYLOG("AT_CMD", "Got send interval: %08X", temp_params.send_interval);
-	if (flash_value[0] != 0xAA)
+	MYLOG("AT_CMD", "Got CRC: %04X", temp_params.settings_crc);
+
+	// Check CRC
+	unsigned char *message = (unsigned char *)temp_params.send_interval;
+	uint16_t crc_expected = crcFast(message, custom_params_len);
+
+	if (temp_params.settings_crc != crc_expected)
 	{
-		MYLOG("AT_CMD", "No valid settings found, set to default, read 0X%08X", temp_params.send_interval);
+		MYLOG("AT_CMD", "CRC error, expected %04X, got %04X", crc_expected, temp_params.settings_crc);
+
+		// if (flash_value[0] != 0xAA)
+		// {
+		// MYLOG("AT_CMD", "No valid settings found, set to default, read 0X%08X", temp_params.send_interval);
 		g_custom_parameters.send_interval = 0;
 		g_custom_parameters.test_mode = 0;
 		g_custom_parameters.display_saver = false;
@@ -695,8 +713,14 @@ bool get_at_setting(void)
  */
 bool save_at_setting(void)
 {
+	// Check CRC
+	unsigned char *message = (unsigned char *)g_custom_parameters.send_interval;
+	uint16_t crc_calculated = crcFast(message, custom_params_len);
+	MYLOG("AT_CMD", "Calculated CRC %04X", crc_calculated);
+
 	custom_param_s temp_params;
-	uint8_t *flash_value = (uint8_t *)&temp_params.valid_flag;
+	uint8_t *flash_value = (uint8_t *)&temp_params.settings_crc;
+	temp_params.settings_crc = crc_calculated;
 	temp_params.send_interval = g_custom_parameters.send_interval;
 	temp_params.test_mode = g_custom_parameters.test_mode;
 	temp_params.display_saver = g_custom_parameters.display_saver;
@@ -705,7 +729,6 @@ bool save_at_setting(void)
 	temp_params.custom_packet_len = g_custom_parameters.custom_packet_len;
 
 	bool wr_result = false;
-	MYLOG("AT_CMD", "Writing flag: %02X", temp_params.valid_flag);
 	MYLOG("AT_CMD", "Writing send interval 0X%08X ", temp_params.send_interval);
 	MYLOG("AT_CMD", "Writing test mode %d ", temp_params.test_mode);
 	MYLOG("AT_CMD", "Writing display mode %s ", temp_params.display_saver ? "On" : "Off");
