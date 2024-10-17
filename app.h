@@ -32,6 +32,7 @@
 			Serial.printf("[%s] ", tag); \
 		Serial.printf(__VA_ARGS__);      \
 		Serial.printf("\n");             \
+		Serial.flush();                  \
 	} while (0);                         \
 	delay(100)
 #else // RAK4630 || RAK11720
@@ -42,6 +43,7 @@
 			Serial.printf("[%s] ", tag); \
 		Serial.printf(__VA_ARGS__);      \
 		Serial.printf("\r\n");           \
+		Serial.flush();                  \
 		Serial6.printf(__VA_ARGS__);     \
 		Serial6.printf("\r\n");          \
 	} while (0);                         \
@@ -53,9 +55,9 @@
 
 // Set firmware version (done in arduino.json when using VSC + Arduino extension)
 #ifndef SW_VERSION_0
- #define SW_VERSION_0 2
- #define SW_VERSION_1 0
- #define SW_VERSION_2 1
+#define SW_VERSION_0 2
+#define SW_VERSION_1 0
+#define SW_VERSION_2 1
 #endif
 /** Custom flash parameters structure */
 struct custom_param_s

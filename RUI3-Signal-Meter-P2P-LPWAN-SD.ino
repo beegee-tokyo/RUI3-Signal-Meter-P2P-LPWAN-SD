@@ -98,12 +98,6 @@ void send_packet(void *data)
 					oled_add_line((char *)"Start location acquisition");
 				}
 
-				if (!g_custom_parameters.location_on)
-				{
-					MYLOG("APP", "Activate GNSS");
-					digitalWrite(WB_IO2, HIGH);
-				}
-
 				// Check if we already have a sufficient location fix
 				if (poll_gnss())
 				{
@@ -201,6 +195,11 @@ void send_packet(void *data)
 				g_last_lat = 0.0;
 			}
 		}
+		else
+		{
+			g_last_long = 0.0;
+			g_last_lat = 0.0;
+		}
 		if (api.lorawan.nwm.get())
 		{
 			if (api.lorawan.njs.get())
@@ -296,7 +295,7 @@ void handle_display(void *reason)
 	}
 	else if (disp_reason[0] == 1)
 	{
-		// MYLOG("APP", "RX_EVENT %d\n", disp_reason[0]);
+		// MYLOG("APP", "RX_EVENT %d, disp_reason[0]);
 		// RX event display
 		if (has_oled && !g_settings_ui)
 		{
@@ -386,8 +385,8 @@ void handle_display(void *reason)
 			write_sd_entry();
 		}
 		Serial.println("LPW P2P mode");
-		Serial.printf("Packet # %d RSSI %d SNR %d\n", packet_num, last_rssi, last_snr);
-		Serial.printf("F %.3f SF %d BW %d\n",
+		Serial.printf("Packet # %d RSSI %d SNR %d\r\n", packet_num, last_rssi, last_snr);
+		Serial.printf("F %.3f SF %d BW %d\r\n",
 					  (float)api.lora.pfreq.get() / 1000000.0,
 					  api.lora.psf.get(),
 					  (api.lora.pbw.get() + 1) * 125);
@@ -564,9 +563,9 @@ void handle_display(void *reason)
 			result.lost = packet_lost;
 			write_sd_entry();
 		}
-		Serial.printf("LinkCheck %s\n", link_check_state == 0 ? "OK" : "NOK");
-		Serial.printf("Packet # %d RSSI %d SNR %d\n", packet_num, last_rssi, last_snr);
-		Serial.printf("GW # %d Demod Margin %d\n", link_check_gateways, link_check_demod_margin);
+		Serial.printf("LinkCheck %s\r\n", link_check_state == 0 ? "OK" : "NOK");
+		Serial.printf("Packet # %d RSSI %d SNR %d\r\n", packet_num, last_rssi, last_snr);
+		Serial.printf("GW # %d Demod Margin %d\r\n", link_check_gateways, link_check_demod_margin);
 	}
 	else if (display_reason == 6)
 	{
@@ -575,9 +574,9 @@ void handle_display(void *reason)
 		int16_t min_distance = field_tester_pckg[3] * 250;
 		int16_t max_distance = field_tester_pckg[4] * 250;
 		int8_t num_gateways = field_tester_pckg[5];
-		Serial.printf("+EVT:FieldTester %d gateways\n", num_gateways);
-		Serial.printf("+EVT:RSSI min %d max %d\n", min_rssi, max_rssi);
-		Serial.printf("+EVT:Distance min %d max %d\n", min_distance, max_distance);
+		Serial.printf("+EVT:FieldTester %d gateways\r\n", num_gateways);
+		Serial.printf("+EVT:RSSI min %d max %d\r\n", min_rssi, max_rssi);
+		Serial.printf("+EVT:Distance min %d max %d\r\n", min_distance, max_distance);
 
 		if (has_oled && !g_settings_ui)
 		{
@@ -649,7 +648,7 @@ void handle_display(void *reason)
 	}
 	else if (display_reason == 7)
 	{
-		Serial.printf("+EVT:FieldTester no downlink\n");
+		Serial.printf("+EVT:FieldTester no downlink\r\n");
 
 		if (has_oled && !g_settings_ui)
 		{
@@ -694,7 +693,7 @@ void handle_display(void *reason)
 	}
 	else if (display_reason == 8)
 	{
-		Serial.printf("+EVT:P2P TX finished\n");
+		Serial.printf("+EVT:P2P TX finished\r\n");
 		tx_active = false;
 
 		if (has_oled && !g_settings_ui)
@@ -930,6 +929,10 @@ void setup(void)
 	digitalWrite(LED_GREEN, HIGH);
 	delay(5000);
 #endif
+
+	// Give a chance to enter AT+BOOT
+	delay(10000);
+
 	sprintf(line_str, "RUI3_Tester_V%d.%d.%d", SW_VERSION_0, SW_VERSION_1, SW_VERSION_2);
 	api.system.firmwareVersion.set(line_str);
 

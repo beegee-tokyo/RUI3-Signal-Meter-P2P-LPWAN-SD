@@ -611,6 +611,22 @@ bool get_at_setting(void)
 	}
 	bool found_problem = false;
 
+	// // For testing, erase all flash settings
+	// uint8_t erase_flash[255] = {0xff};
+	// memset(erase_flash, 0xff, 255);
+	// bool wr_result = api.system.flash.set(0, erase_flash, sizeof(custom_param_s));
+	// if (!wr_result)
+	// {
+	// 	// First write attempt failed
+	// 	MYLOG("AT_CMD", "Failed to erase custom parameters from Flash");
+	// 	// Retry
+	// 	wr_result = api.system.flash.set(0, erase_flash, sizeof(custom_param_s));
+	// }
+	// if (wr_result)
+	// {
+	// 	MYLOG("AT_CMD", "Erased custom parameters from Flash");
+	// }
+
 	custom_param_s temp_params;
 	uint8_t *flash_value = (uint8_t *)&temp_params.settings_crc;
 	if (!api.system.flash.get(0, flash_value, sizeof(custom_param_s)))
@@ -620,9 +636,13 @@ bool get_at_setting(void)
 	}
 	MYLOG("AT_CMD", "Got CRC: %04X", temp_params.settings_crc);
 
-	// Check CRC
-	unsigned char *message = (unsigned char *)temp_params.send_interval;
-	uint16_t crc_expected = crcFast(message, custom_params_len);
+	uint16_t crc_expected = 0x0000;
+	if (temp_params.settings_crc != 0xffff)
+	{
+		// Check CRC
+		unsigned char *message = (unsigned char *)temp_params.send_interval;
+		crc_expected = crcFast(message, custom_params_len);
+	}
 
 	if (temp_params.settings_crc != crc_expected)
 	{
