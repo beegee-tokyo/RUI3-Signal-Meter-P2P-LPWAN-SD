@@ -611,6 +611,8 @@ bool get_at_setting(void)
 	}
 	bool found_problem = false;
 
+	MYLOG("AT_CMD", "Size of custom parameters %d", sizeof(custom_param_s));
+
 	// // For testing, erase all flash settings
 	// uint8_t erase_flash[255] = {0xff};
 	// memset(erase_flash, 0xff, 255);
@@ -637,7 +639,8 @@ bool get_at_setting(void)
 	MYLOG("AT_CMD", "Got CRC: %04X", temp_params.settings_crc);
 
 	uint16_t crc_expected = 0x0000;
-	if (temp_params.settings_crc != 0xffff)
+	// Check validity flag
+	if (temp_params.valid_flag == 0xaa)
 	{
 		// Check CRC
 		unsigned char *message = (unsigned char *)temp_params.send_interval;
@@ -651,7 +654,8 @@ bool get_at_setting(void)
 		// if (flash_value[0] != 0xAA)
 		// {
 		// MYLOG("AT_CMD", "No valid settings found, set to default, read 0X%08X", temp_params.send_interval);
-		g_custom_parameters.send_interval = 0;
+		g_custom_parameters.valid_flag = 0xaa;
+		g_custom_parameters.send_interval = 30000;
 		g_custom_parameters.test_mode = 0;
 		g_custom_parameters.display_saver = false;
 		g_custom_parameters.location_on = false;
@@ -742,6 +746,7 @@ bool save_at_setting(void)
 	uint8_t *flash_value = (uint8_t *)&temp_params.settings_crc;
 	temp_params.settings_crc = crc_calculated;
 	temp_params.send_interval = g_custom_parameters.send_interval;
+	temp_params.valid_flag = g_custom_parameters.valid_flag;
 	temp_params.test_mode = g_custom_parameters.test_mode;
 	temp_params.display_saver = g_custom_parameters.display_saver;
 	temp_params.location_on = g_custom_parameters.location_on;

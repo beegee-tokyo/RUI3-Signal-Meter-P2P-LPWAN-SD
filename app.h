@@ -11,7 +11,6 @@
 #ifndef _APP_H_
 #define _APP_H_
 #include <Arduino.h>
-
 // ATC+PCKG=02685B0367011E05650001237D02CB017400D6306601
 
 /** Set _RAK19026_ to have correct display orientation */
@@ -63,7 +62,8 @@
 struct custom_param_s
 {
 	uint16_t settings_crc = 0;
-	uint32_t send_interval = 0;
+	uint32_t send_interval = 30000;
+	uint8_t valid_flag = 0xAA;
 	uint8_t test_mode = 0;
 	bool display_saver = true;
 	bool location_on = false;
@@ -72,7 +72,7 @@ struct custom_param_s
 	bool dr_sweep_on = false;
 };
 // Structure size without CRC
-#define custom_params_len 11
+#define custom_params_len sizeof(custom_param_s)
 
 typedef enum test_mode_num
 {

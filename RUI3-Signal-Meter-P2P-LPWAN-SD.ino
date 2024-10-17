@@ -890,6 +890,36 @@ void timereq_cb_lpw(int32_t status)
 }
 
 /**
+ * @brief Callback for LoRaMAC stack to get battery level
+ *   Requires changes in the RUI3 files
+ *   lora_service.h add `uint8_t UserBattLevel(void) __attribute__((weak));`
+ *   lora_service.c change `LoRaMacCallbacks.GetBatteryLevel = NULL;` to `LoRaMacCallbacks.GetBatteryLevel = UserBattLevel;`
+ */
+uint8_t UserBattLevel(void)
+{
+	// on USB return 0
+	if (NRF_POWER->USBREGSTATUS == 3)
+	{
+		MYLOG("BAT", "On USB");
+		return 0;
+	}
+
+	// else calculate the battery status
+	float batt_voltage = api.system.bat.get();
+	for (int idx = 0; idx < 10; idx++)
+	{
+		batt_voltage += api.system.bat.get();
+	}
+	batt_voltage = batt_voltage / 11;
+	batt_voltage *= 1000;
+
+	uint8_t lora_batt = batt_voltage * 255 / 4200;
+
+	MYLOG("BAT", "Calculated %d from %.2fmV", lora_batt, batt_voltage);
+	return lora_batt;
+}
+
+/**
  * @brief Setup routine
  *
  */
@@ -1114,7 +1144,7 @@ void setup(void)
 	// If LoRaWAN, start join if required
 	if (lorawan_mode)
 	{
-		if (!api.lorawan.njs.get())
+		if (api.lorawan.njs.get() == 0)
 		{
 			api.lorawan.join(1, 1, 10, 50);
 		}
