@@ -98,7 +98,7 @@ void set_p2p(void);
 void set_field_tester(void);
 void send_packet(void *data);
 uint8_t get_min_dr(uint16_t region, uint16_t payload_size);
-void get_min_max_dr(uint16_t region, uint8_t *min_dr, uint8_t *max_dr);
+bool check_dr(uint16_t packet_len);
 extern uint32_t g_send_repeat_time;
 extern bool lorawan_mode;
 extern bool use_link_check;
@@ -114,7 +114,7 @@ extern WisCayenne g_solution_data;
 bool init_oled(void);
 void oled_add_line(char *line);
 void oled_show(void);
-void oled_write_header(char *header_line);
+void oled_write_header(char *header_line, bool show_error = true);
 void oled_clear(void);
 void oled_write_line(int16_t line, int16_t y_pos, String text);
 void oled_display(void);
@@ -201,6 +201,7 @@ extern volatile float g_last_long;
 extern volatile float g_last_accuracy;
 extern volatile uint32_t g_last_altitude;
 extern volatile uint8_t g_last_satellites;
+extern volatile bool has_gnss_location;
 
 // SD Card
 /** Custom flash parameters structure */
@@ -233,6 +234,7 @@ void clear_sd_file(void);
 extern volatile result_s result;
 extern volatile char file_name[];
 extern bool has_sd;
+extern volatile bool sd_card_error;
 
 // RAK12002 RTC
 bool init_rak12002(void);

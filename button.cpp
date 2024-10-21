@@ -237,7 +237,7 @@ void save_n_reboot(void)
 	if (g_last_settings.test_mode != g_custom_parameters.test_mode)
 	{
 		oled_clear();
-		oled_write_header("REBOOT");
+		oled_write_header("REBOOT", false);
 		g_custom_parameters.send_interval = g_last_settings.send_interval;
 		g_custom_parameters.test_mode = g_last_settings.test_mode;
 		g_custom_parameters.display_saver = g_last_settings.display_saver;
@@ -456,7 +456,7 @@ void handle_button(void)
 		else
 		{
 			oled_clear();
-			oled_write_header((char *)"BOOTLOADER");
+			oled_write_header((char *)"BOOTLOADER", false);
 			udrv_enter_dfu();
 		}
 		break;
@@ -538,7 +538,7 @@ void handle_button(void)
 		else
 		{
 			oled_clear();
-			oled_write_header((char *)"RESET");
+			oled_write_header((char *)"RESET", false);
 			api.system.reboot();
 		}
 		break;

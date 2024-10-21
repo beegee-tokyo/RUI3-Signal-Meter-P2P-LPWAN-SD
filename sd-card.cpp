@@ -18,9 +18,12 @@ void dump_sd_file(const char *path);
 /** Pointer to current log file */
 File log_file;
 
+/** Flag if write or file create failed */
+volatile bool sd_card_error = false;
+
 /**
  * @brief Initialize SD card
- * 
+ *
  * @return true SD card found
  * @return false no SD card found
  */
@@ -111,8 +114,8 @@ bool init_sd(void)
 
 /**
  * @brief Send directory of a folder to the Serial port
- * 
- * @param dir 
+ *
+ * @param dir
  */
 void dir_sd(File dir)
 {
@@ -145,7 +148,7 @@ void dir_sd(File dir)
 
 /**
  * @brief Send content of all files to the Serial port
- * 
+ *
  */
 void dump_all_sd_files(void)
 {
@@ -194,7 +197,7 @@ void dump_all_sd_files(void)
 
 /**
  * @brief Send the content of a file to the Serial port
- * 
+ *
  * @param path Path as string
  */
 void dump_sd_file(const char *path)
@@ -227,7 +230,7 @@ void dump_sd_file(const char *path)
 
 /**
  * @brief Erase all files on the SD card
- * 
+ *
  */
 void clear_sd_file(void)
 {
@@ -259,7 +262,7 @@ void clear_sd_file(void)
 /**
  * @brief Create a new file on the SD card.
  * 		Checks available files and generates a new file name
- * 
+ *
  * @return true File created
  * @return false File could not be created
  */
@@ -277,7 +280,6 @@ bool create_sd_file(void)
 	{
 		while (true)
 		{
-
 			log_file = dir.openNextFile();
 			if (!log_file)
 			{
@@ -336,7 +338,13 @@ bool create_sd_file(void)
 		log_file.close();
 		SD.end();
 
+		sd_card_error = false;
 		return true;
+	}
+	else
+	{
+		// Error creating file. Card might be full?
+		sd_card_error = true;
 	}
 	SD.end();
 
@@ -345,7 +353,7 @@ bool create_sd_file(void)
 
 /**
  * @brief Write to the current log file
- * 
+ *
  */
 void write_sd_entry(void)
 {
@@ -368,61 +376,62 @@ void write_sd_entry(void)
 	log_file = SD.open((const char *)file_name, FILE_WRITE);
 	if (log_file)
 	{
-
+		sd_card_error = false;
+		size_t bytes_to_write = 0;
 		if (g_custom_parameters.test_mode == MODE_LINKCHECK)
 		{
 			if (g_custom_parameters.location_on)
 			{
 				// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"Lost\"");
-				snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d",
-						 result.year, result.month, result.day, result.hour, result.min,
-						 result.mode, result.gw,
-						 result.lat, result.lng,
-						 result.rx_rssi,
-						 result.rx_snr,
-						 result.demod, result.lost);
+				bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d",
+										  result.year, result.month, result.day, result.hour, result.min,
+										  result.mode, result.gw,
+										  result.lat, result.lng,
+										  result.rx_rssi,
+										  result.rx_snr,
+										  result.demod, result.lost);
 			}
 			else
 			{
-				snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%d;%d;%d;%d",
-						 result.year, result.month, result.day, result.hour, result.min,
-						 result.mode, result.gw,
-						 result.rx_rssi,
-						 result.rx_snr,
-						 result.demod, result.lost);
+				bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%d;%d;%d;%d",
+										  result.year, result.month, result.day, result.hour, result.min,
+										  result.mode, result.gw,
+										  result.rx_rssi,
+										  result.rx_snr,
+										  result.demod, result.lost);
 			}
 		}
 		else if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
 		{
 			// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"min RSSI\";\"max RSSI\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\"");
-			snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d",
-					 result.year, result.month, result.day, result.hour, result.min,
-					 result.mode, result.gw,
-					 result.lat, result.lng,
-					 result.min_rssi, result.max_rssi, result.rx_rssi,
-					 result.rx_snr,
-					 result.min_dst, result.max_dst);
+			bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d",
+									  result.year, result.month, result.day, result.hour, result.min,
+									  result.mode, result.gw,
+									  result.lat, result.lng,
+									  result.min_rssi, result.max_rssi, result.rx_rssi,
+									  result.rx_snr,
+									  result.min_dst, result.max_dst);
 		}
 		else // LoRa P2P
 		{
 			if (g_custom_parameters.location_on)
 			{
 				// log_file.println("\"time\";\"Mode\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\"");
-				snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%.6f;%.6f;%d;%d",
-						 result.year, result.month, result.day, result.hour, result.min,
-						 result.mode,
-						 result.lat, result.lng,
-						 result.rx_rssi,
-						 result.rx_snr);
+				bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%.6f;%.6f;%d;%d",
+										  result.year, result.month, result.day, result.hour, result.min,
+										  result.mode,
+										  result.lat, result.lng,
+										  result.rx_rssi,
+										  result.rx_snr);
 			}
 			else
 			{
 				// log_file.println("\"time\";\"Mode\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\"");
-				snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%d",
-						 result.year, result.month, result.day, result.hour, result.min,
-						 result.mode,
-						 result.rx_rssi,
-						 result.rx_snr);
+				bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%d",
+										  result.year, result.month, result.day, result.hour, result.min,
+										  result.mode,
+										  result.rx_rssi,
+										  result.rx_snr);
 			}
 		}
 		// snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d;%d;%d",
@@ -434,12 +443,24 @@ void write_sd_entry(void)
 		// 		 result.min_dst, result.max_dst,
 		// 		 result.demod, result.lost);
 		MYLOG("SD", "Writing:\r\n%s", line_entry);
-		log_file.println(line_entry);
+		size_t written = log_file.println(line_entry);
+		if (written != bytes_to_write + 2)  // Including /r/n
+		{
+			MYLOG("SD", "Written: %d expected %d", written, bytes_to_write);
+			// Error writing to file. Card might be full?
+			sd_card_error = true;
+		}
+		else
+		{
+			sd_card_error = false;
+		}
 		log_file.flush();
 		log_file.close();
 	}
 	else
 	{
+		// Error writing to file. Card might be full?
+		sd_card_error = true;
 		MYLOG("SD", "Error writing to %s", file_name);
 	}
 

@@ -25,7 +25,7 @@ SFE_UBLOX_GNSS my_gnss;
 uint8_t g_gnss_option = 0;
 
 /** Flag if location was found */
-volatile bool last_read_ok = false;
+volatile bool has_gnss_location = false;
 
 /** Latitude */
 int64_t latitude = 0;
@@ -170,7 +170,7 @@ bool init_gnss(bool active)
  */
 bool poll_gnss(void)
 {
-	last_read_ok = false;
+	has_gnss_location = false;
 
 	latitude = 0;
 	longitude = 0;
@@ -217,7 +217,7 @@ bool poll_gnss(void)
 
 		if ((accuracy < 300) && (satellites > 5))
 		{
-			last_read_ok = true;
+			has_gnss_location = true;
 		}
 	}
 	else
@@ -262,7 +262,7 @@ bool poll_gnss(void)
 			// if ((fix_type >= 3) && (satellites >= 8)) /** Fix type 3D and at least 8 satellites */
 			// if (fix_type >= 3) /** Fix type 3D */
 			{
-				last_read_ok = true;
+				has_gnss_location = true;
 				latitude = my_gnss.getLatitude();
 				longitude = my_gnss.getLongitude();
 				altitude = my_gnss.getAltitude();
@@ -276,11 +276,11 @@ bool poll_gnss(void)
 		}
 	}
 
-	if (last_read_ok)
+	if (has_gnss_location)
 	{
 		if ((latitude == 0) && (longitude == 0))
 		{
-			last_read_ok = false;
+			has_gnss_location = false;
 			return false;
 		}
 
@@ -308,7 +308,7 @@ bool poll_gnss(void)
 
 		g_solution_data.addGNSS_T(latitude, longitude, altitude, accuracy, satellites);
 
-		last_read_ok = true;
+		has_gnss_location = true;
 
 		g_last_lat = latitude / 10000000.0;
 		g_last_long = longitude / 10000000.0;
@@ -327,7 +327,7 @@ bool poll_gnss(void)
 	}
 
 	// MYLOG("GNSS", "No valid location found");
-	last_read_ok = false;
+	has_gnss_location = false;
 	return false;
 }
 
@@ -360,7 +360,7 @@ void gnss_handler(void *)
 			oled_add_line((char *)"Location:");
 			sprintf(line_str, "La %.4f Lo %.4f", g_last_lat, g_last_long, g_last_altitude);
 			oled_add_line(line_str);
-			sprintf(line_str, "HDOP %.2f Sat: %d", g_last_accuracy, g_last_satellites );
+			sprintf(line_str, "HDOP %.2f Sat: %d", g_last_accuracy, g_last_satellites);
 			oled_add_line(line_str);
 		}
 		finished_poll = true;
@@ -370,15 +370,23 @@ void gnss_handler(void *)
 			MYLOG("APP", "Request time");
 			api.lorawan.timereq.set(1);
 		}
-		// Always send confirmed packet to make sure a reply is received
-		if (!api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), 1, true, 7))
+		// Check if packet size fits DR
+		if (check_dr(g_solution_data.getSize()))
 		{
-			tx_active = false;
-			MYLOG("APP", "LoRaWAN send returned error");
+			// Always send confirmed packet to make sure a reply is received
+			if (!api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), 1, true, 1))
+			{
+				tx_active = false;
+				MYLOG("APP", "LoRaWAN send returned error");
+			}
+			else
+			{
+				tx_active = true;
+			}
 		}
 		else
 		{
-			tx_active = true;
+			tx_active = false;
 		}
 	}
 	else
@@ -399,28 +407,6 @@ void gnss_handler(void *)
 				oled_add_line(line_str);
 			}
 			finished_poll = true;
-			if (forced_tx)
-			{
-				forced_tx = false;
-				// If forced TX, send whether we have location or not 143050416, 1206306357
-				g_solution_data.addGNSS_T(0, 0, 0, 1, 0);
-				// Get gateway time
-				if (sync_time_status == 0)
-				{
-					MYLOG("GNSS", "Request time");
-					api.lorawan.timereq.set(1);
-				}
-
-				if (!api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), 1, true, 7))
-				{
-					tx_active = false;
-					MYLOG("GNSS", "LoRaWAN send returned error");
-				}
-				else
-				{
-					tx_active = true;
-				}
-			}
 		}
 	}
 	if (has_oled && !finished_poll && !g_settings_ui)

@@ -82,8 +82,11 @@ bool init_oled(void)
 /**
  * @brief Write the top line of the display
  */
-void oled_write_header(char *header_line)
+void oled_write_header(char *header_line, bool show_error)
 {
+	uint16_t len = 0;
+	char oled_line[64];
+
 	display.setFont(ArialMT_Plain_10);
 
 	// clear the status bar
@@ -93,10 +96,23 @@ void oled_write_header(char *header_line)
 	display.setColor(WHITE);
 	display.setTextAlignment(TEXT_ALIGN_LEFT);
 
-	display.drawString(0, 0, header_line);
-
-	uint16_t len = 0;
-	char oled_line[64];
+	if (sd_card_error && has_sd && show_error)
+	{
+		MYLOG("DISP", "SD card error! %d %d", sd_card_error, has_sd);
+		display.drawString(0, 0, (char *)"SD CARD ERROR");
+	}
+	else
+	{
+		if (g_custom_parameters.location_on)
+		{
+			sprintf(oled_line, "%s %s", has_gnss_location ? "O" : "X", header_line);
+			display.drawString(0, 0, oled_line);
+		}
+		else
+		{
+			display.drawString(0, 0, header_line);
+		}
+	}
 #ifdef _VARIANT_RAK4630_
 	uint8_t usbStatus = NRF_POWER->USBREGSTATUS;
 	switch (usbStatus)
@@ -222,7 +238,7 @@ void oled_display(void)
 
 /**
  * @brief Timer callback for display saver
- * 
+ *
  */
 void oled_saver(void *)
 {
@@ -255,7 +271,7 @@ void oled_power(bool on_off)
 
 /**
  * @brief Settings display handler
- * 
+ *
  * @param menu which menu content to show
  * @param menu_len number of menu items
  * @param sel_menu selected menu
@@ -419,7 +435,7 @@ void display_show_menu(char *menu[], uint8_t menu_len, uint8_t sel_menu, uint8_t
 	// Handle P2P TX selection
 	else if (sel_menu == S_P2P_TX)
 	{
-		oled_write_line(0,0,(char *)"(1) Back");
+		oled_write_line(0, 0, (char *)"(1) Back");
 		oled_write_line(1, 0, (char *)"(2) Next");
 		oled_write_line(2, 0, (char *)"(3) Prev");
 		uint8_t prev_item = (sel_item == 5 ? 22 : sel_item - 1);

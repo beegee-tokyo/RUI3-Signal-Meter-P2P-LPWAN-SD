@@ -51,3 +51,34 @@ uint8_t get_min_dr(uint16_t region, uint16_t payload_size)
 	// No matching datarate for the payload size found
 	return 16;
 }
+
+/**
+ * @brief Check if packet fits with current DR
+ * 
+ * @return true Packet size ok
+ * @return false Packet is too large
+ */
+bool check_dr(uint16_t packet_len)
+{
+	// Check DR and packet size
+	uint8_t new_dr = get_min_dr(api.lorawan.band.get(), packet_len);
+	MYLOG("UPLINK", "Get DR for packet len %d returned %d, current is %d", packet_len, new_dr, api.lorawan.dr.get());
+	if (new_dr <= api.lorawan.dr.get())
+	{
+		MYLOG("UPLINK", "Possible Datarate is ok or smaller than current");
+		return true;
+	}
+	else
+	{
+		MYLOG("UPLINK", "Datarate doesn't allow packet size");
+		if (has_oled && !g_settings_ui)
+		{
+			oled_add_line((char *)"Packet too large!");
+			sprintf(line_str, "Requires DR%d", new_dr);
+			oled_add_line(line_str);
+			tx_active = false;
+			// Do not send packet
+			return false;
+		}
+	}
+}

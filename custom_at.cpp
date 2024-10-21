@@ -316,7 +316,7 @@ int dump_logs_handler(SERIAL_PORT port, char *cmd, stParam *param)
 		api.system.timer.stop(RAK_TIMER_1);
 		api.system.timer.stop(RAK_TIMER_2);
 		oled_clear();
-		oled_write_header("REBOOT");
+		oled_write_header("REBOOT", false);
 		oled_add_line((char *)"Dumping SD card");
 		oled_add_line((char *)"Do not power off");
 		oled_display();
@@ -332,7 +332,7 @@ int dump_logs_handler(SERIAL_PORT port, char *cmd, stParam *param)
 		api.system.timer.stop(RAK_TIMER_1);
 		api.system.timer.stop(RAK_TIMER_2);
 		oled_clear();
-		oled_write_header("REBOOT");
+		oled_write_header("REBOOT", false);
 		oled_add_line((char *)"Erasing SD card");
 		oled_add_line((char *)"Do not power off");
 		oled_display();
@@ -491,7 +491,7 @@ char *g_regions_list[] = {"EU433", "CN470", "RU864", "IN865", "EU868", "US915", 
 /** Network modes as text array*/
 char *nwm_list[] = {"P2P", "LoRaWAN", "FSK"};
 /** Available test modes as text array */
-char *test_mode_list[] = {"LinkCheck", "Confirmed Packet", "LoRa P2P"};
+char *test_mode_list[] = {"LinkCheck", "LoRa P2P", "Field Tester"};
 /**
  * @brief Print device status over Serial
  *

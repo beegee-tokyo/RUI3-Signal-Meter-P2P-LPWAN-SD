@@ -1,0 +1,1 @@
+C:\Users\bernd\AppData\Local\Arduino15\packages\rak_rui\tools\pc-nrfutil\v6.1.7\nrfutil.exe -v dfu serial --package D:\Projects\RUI3\RUI3-Signal-Meter-P2P-LPWAN-SD\generated\RAK10706-Signal-Meter-SD_V2.0.1.zip -p COM10 

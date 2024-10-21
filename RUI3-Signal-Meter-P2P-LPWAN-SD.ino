@@ -117,8 +117,13 @@ void send_packet(void *data)
 						MYLOG("APP", "Request time");
 						api.lorawan.timereq.set(1);
 					}
+					// Check if packet size fits DR
+					if (!check_dr(g_custom_parameters.custom_packet_len))
+					{
+						return;
+					}
 					// Always send confirmed packet to make sure a reply is received
-					if (!api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), 1, true, 7))
+					if (!api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), 1, true, 1))
 					{
 						MYLOG("APP", "LoRaWAN send returned error");
 						tx_active = false;
@@ -126,18 +131,54 @@ void send_packet(void *data)
 				}
 				else
 				{
-					// Start checking for valid location
-					// Set flag for GNSS active to avoid retrigger */
-					gnss_active = true;
-					g_solution_data.reset();
-					check_gnss_counter = 0;
-					// Max location aquisition time is half of send frequency
-					check_gnss_max_try = g_custom_parameters.send_interval / 2 / 2500;
-					// Reset satellites check values
-					max_sat = 0;
-					max_sat_unchanged = 0;
-					// Start the timer
-					api.system.timer.start(RAK_TIMER_3, 2500, NULL);
+					if (forced_tx) // Send immediately, with or without location
+					{
+						forced_tx = false;
+						if (has_oled && !g_settings_ui)
+						{
+							sprintf(line_str, "Force TX w/o location");
+							oled_add_line(line_str);
+						}
+						// If forced TX, send whether we have location or not 143050416, 1206306357
+						g_solution_data.addGNSS_T(0, 0, 0, 1, 0);
+						// Get gateway time
+						if (sync_time_status == 0)
+						{
+							MYLOG("GNSS", "Request time");
+							api.lorawan.timereq.set(1);
+						}
+
+						// Check if packet size fits DR
+						if (!check_dr(g_custom_parameters.custom_packet_len))
+						{
+							return;
+						}
+
+						if (!api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), 1, true, 1))
+						{
+							tx_active = false;
+							MYLOG("GNSS", "LoRaWAN send returned error");
+						}
+						else
+						{
+							tx_active = true;
+						}
+					}
+					else // Wait for location fix
+					{
+						// Start checking for valid location
+						// Set flag for GNSS active to avoid retrigger */
+						gnss_active = true;
+						g_solution_data.reset();
+						check_gnss_counter = 0;
+						// Max location aquisition time is half of send frequency
+						check_gnss_max_try = g_custom_parameters.send_interval / 2 / 2500;
+						// Reset satellites check values
+						max_sat = 0;
+						max_sat_unchanged = 0;
+						// Start the timer
+						api.system.timer.start(RAK_TIMER_3, 2500, NULL);
+					}
 				}
 			}
 			else
@@ -170,8 +211,14 @@ void send_packet(void *data)
 				MYLOG("APP", "Request time");
 			}
 
+			// Check if packet size fits DR
+			if (!check_dr(g_custom_parameters.custom_packet_len))
+			{
+				return;
+			}
+
 			// Always send confirmed packet to make sure a reply is received
-			if (!api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), 1, true, 7))
+			if (!api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), 1, true, 1))
 			{
 				MYLOG("APP", "LoRaWAN send returned error");
 				tx_active = false;
@@ -187,19 +234,8 @@ void send_packet(void *data)
 			forced_tx = false;
 		}
 
-		if (g_custom_parameters.location_on)
-		{
-			if (!poll_gnss())
-			{
-				g_last_long = 0.0;
-				g_last_lat = 0.0;
-			}
-		}
-		else
-		{
-			g_last_long = 0.0;
-			g_last_lat = 0.0;
-		}
+		g_solution_data.reset();
+
 		if (api.lorawan.nwm.get())
 		{
 			if (api.lorawan.njs.get())
@@ -208,26 +244,26 @@ void send_packet(void *data)
 				MYLOG("APP", "Send packet");
 				oled_add_line((char *)"Start sending");
 
-				// Check DR
-				uint8_t new_dr = get_min_dr(api.lorawan.band.get(), g_custom_parameters.custom_packet_len);
-				MYLOG("UPLINK", "Get DR for packet len %d returned %d, current is %d", g_custom_parameters.custom_packet_len, new_dr, api.lorawan.dr.get());
-				if (new_dr <= api.lorawan.dr.get())
-				{
-					MYLOG("UPLINK", "Possible Datarate is ok or smaller than current");
-				}
-				else
-				{
-					api.lorawan.dr.set(new_dr);
-					delay(500);
-					MYLOG("UPLINK", "Datarate changed to %d", api.lorawan.dr.get());
-					if (has_oled && !g_settings_ui)
-					{
-						oled_add_line((char *)"Packet too large!");
-						sprintf(line_str, "New DR%d", new_dr);
-						oled_add_line(line_str);
-					}
-					MYLOG("UPLINK", "Datarate changed to %d", api.lorawan.dr.get());
-				}
+				// // Check DR ==> Not good to change DR automatically!!!
+				// uint8_t new_dr = get_min_dr(api.lorawan.band.get(), g_custom_parameters.custom_packet_len);
+				// MYLOG("UPLINK", "Get DR for packet len %d returned %d, current is %d", g_custom_parameters.custom_packet_len, new_dr, api.lorawan.dr.get());
+				// if (new_dr <= api.lorawan.dr.get())
+				// {
+				// 	MYLOG("UPLINK", "Possible Datarate is ok or smaller than current");
+				// }
+				// else
+				// {
+				// 	api.lorawan.dr.set(new_dr);
+				// 	delay(500);
+				// 	MYLOG("UPLINK", "Datarate changed to %d", api.lorawan.dr.get());
+				// 	if (has_oled && !g_settings_ui)
+				// 	{
+				// 		oled_add_line((char *)"Packet too large!");
+				// 		sprintf(line_str, "New DR%d", new_dr);
+				// 		oled_add_line(line_str);
+				// 	}
+				// 	MYLOG("UPLINK", "Datarate changed to %d", api.lorawan.dr.get());
+				// }
 
 				// Get gateway time
 				if (sync_time_status == 0)
@@ -236,10 +272,37 @@ void send_packet(void *data)
 					api.lorawan.timereq.set(1);
 				}
 				// Always send confirmed packet to make sure a reply is received
-				if (!api.lorawan.send(g_custom_parameters.custom_packet_len, g_custom_parameters.custom_packet, 2, true, 7))
+				if (g_custom_parameters.location_on)
 				{
-					tx_active = false;
-					MYLOG("APP", "LoRaWAN send returned error");
+					if (!poll_gnss())
+					{
+						g_last_long = 0.0;
+						g_last_lat = 0.0;
+					}
+
+					// Check if packet size fits DR
+					if (!check_dr(g_solution_data.getSize()))
+					{
+						return;
+					}
+					if (!api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), 1, true, 1))
+					{
+						tx_active = false;
+						MYLOG("APP", "LoRaWAN send returned error");
+					}
+				}
+				else
+				{
+					// Check if packet size fits DR
+					if (!check_dr(g_custom_parameters.custom_packet_len))
+					{
+						return;
+					}
+					if (!api.lorawan.send(g_custom_parameters.custom_packet_len, g_custom_parameters.custom_packet, 2, true, 1))
+					{
+						tx_active = false;
+						MYLOG("APP", "LoRaWAN send returned error");
+					}
 				}
 			}
 			else
@@ -297,6 +360,35 @@ void handle_display(void *reason)
 	{
 		// MYLOG("APP", "RX_EVENT %d, disp_reason[0]);
 		// RX event display
+		if (has_sd)
+		{
+			if (has_rtc)
+			{
+				read_rak12002();
+			}
+			else
+			{
+				get_mcu_time();
+			}
+			result.year = g_date_time.year;
+			result.month = g_date_time.month;
+			result.day = g_date_time.date;
+			result.hour = g_date_time.hour;
+			result.min = g_date_time.minute;
+			result.mode = MODE_P2P;
+			result.gw = 0;
+			result.lat = g_last_lat;
+			result.lng = g_last_long;
+			result.min_rssi = 0;
+			result.max_rssi = 0;
+			result.rx_rssi = last_rssi;
+			result.rx_snr = last_snr;
+			result.min_dst = 0;
+			result.max_dst = 0;
+			result.demod = 0;
+			result.lost = packet_lost;
+			write_sd_entry();
+		}
 		if (has_oled && !g_settings_ui)
 		{
 			sprintf(line_str, "LoRa P2P mode");
@@ -355,35 +447,6 @@ void handle_display(void *reason)
 			oled_write_line(4, 64, line_str);
 			oled_display();
 		}
-		if (has_sd)
-		{
-			if (has_rtc)
-			{
-				read_rak12002();
-			}
-			else
-			{
-				get_mcu_time();
-			}
-			result.year = g_date_time.year;
-			result.month = g_date_time.month;
-			result.day = g_date_time.date;
-			result.hour = g_date_time.hour;
-			result.min = g_date_time.minute;
-			result.mode = MODE_P2P;
-			result.gw = 0;
-			result.lat = g_last_lat;
-			result.lng = g_last_long;
-			result.min_rssi = 0;
-			result.max_rssi = 0;
-			result.rx_rssi = last_rssi;
-			result.rx_snr = last_snr;
-			result.min_dst = 0;
-			result.max_dst = 0;
-			result.demod = 0;
-			result.lost = packet_lost;
-			write_sd_entry();
-		}
 		Serial.println("LPW P2P mode");
 		Serial.printf("Packet # %d RSSI %d SNR %d\r\n", packet_num, last_rssi, last_snr);
 		Serial.printf("F %.3f SF %d BW %d\r\n",
@@ -441,6 +504,35 @@ void handle_display(void *reason)
 	{
 		// MYLOG("APP", "LINK_CHECK %d\n", disp_reason[0]);
 		// LinkCheck result event display
+		if (has_sd)
+		{
+			if (has_rtc)
+			{
+				read_rak12002();
+			}
+			else
+			{
+				get_mcu_time();
+			}
+			result.year = g_date_time.year;
+			result.month = g_date_time.month;
+			result.day = g_date_time.date;
+			result.hour = g_date_time.hour;
+			result.min = g_date_time.minute;
+			result.mode = MODE_LINKCHECK;
+			result.gw = link_check_gateways;
+			result.lat = g_last_lat;
+			result.lng = g_last_long;
+			result.min_rssi = last_rssi;
+			result.max_rssi = last_rssi;
+			result.rx_rssi = last_rssi;
+			result.rx_snr = last_snr;
+			result.min_dst = 0;
+			result.max_dst = 0;
+			result.demod = link_check_demod_margin;
+			result.lost = packet_lost;
+			write_sd_entry();
+		}
 		if (has_oled && !g_settings_ui)
 		{
 			sprintf(line_str, "LPW LinkCheck %s", link_check_state == 0 ? "OK" : "NOK");
@@ -533,6 +625,20 @@ void handle_display(void *reason)
 			}
 			oled_display();
 		}
+		Serial.printf("LinkCheck %s\r\n", link_check_state == 0 ? "OK" : "NOK");
+		Serial.printf("Packet # %d RSSI %d SNR %d\r\n", packet_num, last_rssi, last_snr);
+		Serial.printf("GW # %d Demod Margin %d\r\n", link_check_gateways, link_check_demod_margin);
+	}
+	else if (display_reason == 6)
+	{
+		int16_t min_rssi = field_tester_pckg[1] - 200;
+		int16_t max_rssi = field_tester_pckg[2] - 200;
+		int16_t min_distance = field_tester_pckg[3] * 250;
+		int16_t max_distance = field_tester_pckg[4] * 250;
+		int8_t num_gateways = field_tester_pckg[5];
+		Serial.printf("+EVT:FieldTester %d gateways\r\n", num_gateways);
+		Serial.printf("+EVT:RSSI min %d max %d\r\n", min_rssi, max_rssi);
+		Serial.printf("+EVT:Distance min %d max %d\r\n", min_distance, max_distance);
 
 		if (has_sd)
 		{
@@ -549,35 +655,20 @@ void handle_display(void *reason)
 			result.day = g_date_time.date;
 			result.hour = g_date_time.hour;
 			result.min = g_date_time.minute;
-			result.mode = MODE_LINKCHECK;
-			result.gw = link_check_gateways;
+			result.mode = MODE_FIELDTESTER;
+			result.gw = num_gateways;
 			result.lat = g_last_lat;
 			result.lng = g_last_long;
-			result.min_rssi = last_rssi;
-			result.max_rssi = last_rssi;
+			result.min_rssi = min_rssi;
+			result.max_rssi = max_rssi;
 			result.rx_rssi = last_rssi;
 			result.rx_snr = last_snr;
-			result.min_dst = 0;
-			result.max_dst = 0;
-			result.demod = link_check_demod_margin;
+			result.min_dst = min_distance;
+			result.max_dst = max_distance;
+			result.demod = 0;
 			result.lost = packet_lost;
 			write_sd_entry();
 		}
-		Serial.printf("LinkCheck %s\r\n", link_check_state == 0 ? "OK" : "NOK");
-		Serial.printf("Packet # %d RSSI %d SNR %d\r\n", packet_num, last_rssi, last_snr);
-		Serial.printf("GW # %d Demod Margin %d\r\n", link_check_gateways, link_check_demod_margin);
-	}
-	else if (display_reason == 6)
-	{
-		int16_t min_rssi = field_tester_pckg[1] - 200;
-		int16_t max_rssi = field_tester_pckg[2] - 200;
-		int16_t min_distance = field_tester_pckg[3] * 250;
-		int16_t max_distance = field_tester_pckg[4] * 250;
-		int8_t num_gateways = field_tester_pckg[5];
-		Serial.printf("+EVT:FieldTester %d gateways\r\n", num_gateways);
-		Serial.printf("+EVT:RSSI min %d max %d\r\n", min_rssi, max_rssi);
-		Serial.printf("+EVT:Distance min %d max %d\r\n", min_distance, max_distance);
-
 		if (has_oled && !g_settings_ui)
 		{
 			oled_clear();
@@ -616,51 +707,11 @@ void handle_display(void *reason)
 			}
 			oled_display();
 		}
-		if (has_sd)
-		{
-			if (has_rtc)
-			{
-				read_rak12002();
-			}
-			else
-			{
-				get_mcu_time();
-			}
-			result.year = g_date_time.year;
-			result.month = g_date_time.month;
-			result.day = g_date_time.date;
-			result.hour = g_date_time.hour;
-			result.min = g_date_time.minute;
-			result.mode = MODE_FIELDTESTER;
-			result.gw = num_gateways;
-			result.lat = g_last_lat;
-			result.lng = g_last_long;
-			result.min_rssi = min_rssi;
-			result.max_rssi = max_rssi;
-			result.rx_rssi = last_rssi;
-			result.rx_snr = last_snr;
-			result.min_dst = min_distance;
-			result.max_dst = max_distance;
-			result.demod = 0;
-			result.lost = packet_lost;
-			write_sd_entry();
-		}
 	}
 	else if (display_reason == 7)
 	{
 		Serial.printf("+EVT:FieldTester no downlink\r\n");
 
-		if (has_oled && !g_settings_ui)
-		{
-			oled_clear();
-			oled_write_header((char *)"RAK FieldTester");
-
-			sprintf(line_str, "No Downlink received");
-			oled_write_line(0, 0, line_str);
-			sprintf(line_str, "L %.6f:%.6f", g_last_lat, g_last_long);
-			oled_write_line(4, 0, line_str);
-			oled_display();
-		}
 		if (has_sd)
 		{
 			if (has_rtc)
@@ -689,6 +740,17 @@ void handle_display(void *reason)
 			result.demod = 0;
 			result.lost = packet_lost;
 			write_sd_entry();
+		}
+		if (has_oled && !g_settings_ui)
+		{
+			oled_clear();
+			oled_write_header((char *)"RAK FieldTester");
+
+			sprintf(line_str, "No Downlink received");
+			oled_write_line(0, 0, line_str);
+			sprintf(line_str, "L %.6f:%.6f", g_last_lat, g_last_long);
+			oled_write_line(4, 0, line_str);
+			oled_display();
 		}
 	}
 	else if (display_reason == 8)
@@ -892,8 +954,8 @@ void timereq_cb_lpw(int32_t status)
 /**
  * @brief Callback for LoRaMAC stack to get battery level
  *   Requires changes in the RUI3 files
- *   lora_service.h add `uint8_t UserBattLevel(void) __attribute__((weak));`
- *   lora_service.c change `LoRaMacCallbacks.GetBatteryLevel = NULL;` to `LoRaMacCallbacks.GetBatteryLevel = UserBattLevel;`
+ *   service_lora.h add `uint8_t UserBattLevel(void) __attribute__((weak));`
+ *   service_lora.c change `LoRaMacCallbacks.GetBatteryLevel = NULL;` to `LoRaMacCallbacks.GetBatteryLevel = UserBattLevel;`
  */
 uint8_t UserBattLevel(void)
 {
@@ -916,6 +978,7 @@ uint8_t UserBattLevel(void)
 	uint8_t lora_batt = batt_voltage * 255 / 4200;
 
 	MYLOG("BAT", "Calculated %d from %.2fmV", lora_batt, batt_voltage);
+
 	return lora_batt;
 }
 
@@ -936,7 +999,8 @@ void setup(void)
 #ifdef _VARIANT_RAK4630_
 	if (NRF_POWER->USBREGSTATUS == 3)
 	{
-		delay(2000);
+		// Give a chance to enter AT+BOOT
+		delay(5000);
 	}
 	else
 	{
@@ -959,9 +1023,6 @@ void setup(void)
 	digitalWrite(LED_GREEN, HIGH);
 	delay(5000);
 #endif
-
-	// Give a chance to enter AT+BOOT
-	delay(10000);
 
 	sprintf(line_str, "RUI3_Tester_V%d.%d.%d", SW_VERSION_0, SW_VERSION_1, SW_VERSION_2);
 	api.system.firmwareVersion.set(line_str);
@@ -1019,7 +1080,7 @@ void setup(void)
 	init_acc(false);
 
 	// Initialize GNSS (set to sleep as default)
-	if (g_custom_parameters.test_mode == 3)
+	if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
 	{
 		MYLOG("APP", "Init GNSS as active");
 		init_gnss(true);
@@ -1034,7 +1095,7 @@ void setup(void)
 		else
 		{
 			MYLOG("APP", "Init GNSS as active");
-			init_gnss(false);
+			init_gnss(true);
 		}
 	}
 
@@ -1061,7 +1122,6 @@ void setup(void)
 	}
 	else
 	{
-		init_dump_logs_at();
 		// New file creation
 		has_sd = create_sd_file();
 		if (!has_sd)
@@ -1069,6 +1129,7 @@ void setup(void)
 			MYLOG("APP", "Failed to create file");
 		}
 		MYLOG("APP", "New file created has_sd = %s", has_sd ? "true" : "false");
+		init_dump_logs_at();
 	}
 
 	// Setup callbacks and timers depending on test mode
