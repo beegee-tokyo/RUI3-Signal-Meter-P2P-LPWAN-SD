@@ -992,6 +992,17 @@ void setup(void)
 	pinMode(LED_GREEN, OUTPUT);
 	pinMode(LED_BLUE, OUTPUT);
 
+	// Check if OLED is available
+	Wire.begin();
+	has_oled = init_oled();
+	if (has_oled)
+	{
+		sprintf(line_str, "RAK Signal Meter");
+		oled_write_header(line_str);
+		oled_add_line((char *)"Initializing");
+		oled_add_line((char *)"Please wait");
+	}
+
 	// Shutdown modules power
 	digitalWrite(WB_IO2, LOW);
 
@@ -1027,11 +1038,12 @@ void setup(void)
 	sprintf(line_str, "RUI3_Tester_V%d.%d.%d", SW_VERSION_0, SW_VERSION_1, SW_VERSION_2);
 	api.system.firmwareVersion.set(line_str);
 
-	// Check if OLED is available
-	Wire.begin();
-	has_oled = init_oled();
+	// // Check if OLED is available
+	// Wire.begin();
+	// has_oled = init_oled();
 	if (has_oled)
 	{
+		oled_clear();
 		sprintf(line_str, "RAK Signal Meter");
 		oled_write_header(line_str);
 	}

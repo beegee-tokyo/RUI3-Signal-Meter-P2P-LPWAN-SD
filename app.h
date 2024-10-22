@@ -105,6 +105,7 @@ extern bool use_link_check;
 extern volatile bool tx_active;
 extern volatile bool forced_tx;
 extern uint8_t sync_time_status;
+extern uint16_t *region_map[];
 
 // LoRaWAN stuff
 #include "wisblock_cayenne.h"
@@ -168,6 +169,7 @@ typedef enum
 	QUAD_CLICK,
 	FIVE_CLICK,
 	SIX_CLICK,
+	SEVEN_CLICK,
 	BUTTONSTATE_NONE,
 } buttonState_t;
 

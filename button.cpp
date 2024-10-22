@@ -223,6 +223,20 @@ uint8_t getButtonStatus(void)
 			return SIX_CLICK;
 		}
 	}
+	if (((millis() - pressTime) >= 1600) && (pressCount == 7))
+	{
+		uint8_t highCount = 0;
+		for (uint8_t i; i < 200; i++)
+		{
+			if (digitalRead(BUTTON_INT_PIN) == HIGH)
+				highCount++;
+			delay(1);
+		}
+		if (highCount > 198) // Have no option but to.
+		{
+			return SEVEN_CLICK;
+		}
+	}
 	return BUTTONSTATE_NONE;
 }
 
@@ -398,6 +412,22 @@ void handle_button(void)
 
 		break;
 	}
+	case SEVEN_CLICK:
+	{
+		pressCount = 0;
+		pressTime = 0;
+		// MYLOG("BTN", "Seven Clicks");
+		if (g_settings_ui)
+		{
+			// Future use
+		}
+		else
+		{
+			oled_clear();
+			oled_write_header((char *)"BOOTLOADER", false);
+			udrv_enter_dfu();
+		}
+	}
 	case SIX_CLICK:
 	{
 		pressCount = 0;
@@ -414,6 +444,12 @@ void handle_button(void)
 				break;
 			}
 			MYLOG("BTN", "6x Menu Level %d", sel_menu);
+		}
+		else
+		{
+			oled_clear();
+			oled_write_header((char *)"RESET", false);
+			api.system.reboot();
 		}
 		break;
 	}
@@ -452,12 +488,6 @@ void handle_button(void)
 				break;
 			}
 			MYLOG("BTN", "5x Menu Level %d", sel_menu);
-		}
-		else
-		{
-			oled_clear();
-			oled_write_header((char *)"BOOTLOADER", false);
-			udrv_enter_dfu();
 		}
 		break;
 	}
@@ -537,9 +567,58 @@ void handle_button(void)
 		}
 		else
 		{
-			oled_clear();
-			oled_write_header((char *)"RESET", false);
-			api.system.reboot();
+			if (api.lorawan.nwm.get() == 1)
+			{
+				if (g_custom_parameters.test_mode != MODE_P2P)
+				{ 
+					// Sweep through all DR (only LoRaWAN)
+					if (!tx_active)
+					{
+						if (!display_power)
+						{
+							oled_power(true);
+						}
+						MYLOG("BTN", "DR sweep triggered");
+						api.system.timer.stop(RAK_TIMER_0);
+
+						uint16_t *region_ps = region_map[api.lorawan.band.get()];
+						uint16_t origin_dr = api.lorawan.dr.get();
+						for (int idx = 0; idx < 16; idx++)
+						{
+							if (region_ps[idx] != 0)
+							{
+								MYLOG("BTN", "DR sweep DR%d", idx);
+								api.lorawan.dr.set(idx);
+								delay(100);
+								send_packet(NULL);
+
+								// Wait for TX finished
+								time_t start_wait = millis();
+								while (tx_active)
+								{
+									delay(1000);
+									if ((millis() - start_wait) > 10000)
+									{
+										// Timeout on tx_active
+										MYLOG("BTN", "tx_active timeout");
+										break;
+									}
+								}
+								// Some time for display
+								delay(2000);
+							}
+						}
+
+						// Restore data rate
+						api.lorawan.dr.set(origin_dr);
+
+						if (g_custom_parameters.send_interval != 0)
+						{
+							api.system.timer.start(RAK_TIMER_0, g_custom_parameters.send_interval, NULL);
+						}
+					}
+				}
+			}
 		}
 		break;
 	}
@@ -982,7 +1061,6 @@ void handle_button(void)
 		}
 		else
 		{
-
 		}
 		break;
 	}
