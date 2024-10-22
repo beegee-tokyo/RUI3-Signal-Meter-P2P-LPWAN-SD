@@ -33,6 +33,8 @@ volatile int32_t tx_fail_status;
 volatile bool tx_active = false;
 /** Flag if TX is manually triggered */
 volatile bool forced_tx = false;
+/** Flag if DR sweeping is active */
+volatile bool dr_sweep_active = false;
 
 /** LoRa mode */
 bool lorawan_mode = true;
@@ -131,7 +133,7 @@ void send_packet(void *data)
 				}
 				else
 				{
-					if (forced_tx) // Send immediately, with or without location
+					if (forced_tx || dr_sweep_active) // Send immediately, with or without location
 					{
 						forced_tx = false;
 						if (has_oled && !g_settings_ui)
@@ -242,7 +244,18 @@ void send_packet(void *data)
 			{
 				digitalWrite(LED_BLUE, HIGH);
 				MYLOG("APP", "Send packet");
-				oled_add_line((char *)"Start sending");
+				if (dr_sweep_active)
+				{
+					oled_add_line((char *)"DR sweep sending");
+				}
+				else if (forced_tx)
+				{
+					oled_add_line((char *)"Forced sending");
+				}
+				else
+				{
+					oled_add_line((char *)"Start sending");
+				}
 
 				// // Check DR ==> Not good to change DR automatically!!!
 				// uint8_t new_dr = get_min_dr(api.lorawan.band.get(), g_custom_parameters.custom_packet_len);
@@ -375,6 +388,7 @@ void handle_display(void *reason)
 			result.day = g_date_time.date;
 			result.hour = g_date_time.hour;
 			result.min = g_date_time.minute;
+			result.sec = g_date_time.second;
 			result.mode = MODE_P2P;
 			result.gw = 0;
 			result.lat = g_last_lat;
@@ -387,6 +401,7 @@ void handle_display(void *reason)
 			result.max_dst = 0;
 			result.demod = 0;
 			result.lost = packet_lost;
+			result.tx_dr = api.lorawan.dr.get();
 			write_sd_entry();
 		}
 		if (has_oled && !g_settings_ui)
@@ -519,6 +534,7 @@ void handle_display(void *reason)
 			result.day = g_date_time.date;
 			result.hour = g_date_time.hour;
 			result.min = g_date_time.minute;
+			result.sec = g_date_time.second;
 			result.mode = MODE_LINKCHECK;
 			result.gw = link_check_gateways;
 			result.lat = g_last_lat;
@@ -531,6 +547,7 @@ void handle_display(void *reason)
 			result.max_dst = 0;
 			result.demod = link_check_demod_margin;
 			result.lost = packet_lost;
+			result.tx_dr = api.lorawan.dr.get();
 			write_sd_entry();
 		}
 		if (has_oled && !g_settings_ui)
@@ -655,6 +672,7 @@ void handle_display(void *reason)
 			result.day = g_date_time.date;
 			result.hour = g_date_time.hour;
 			result.min = g_date_time.minute;
+			result.sec = g_date_time.second;
 			result.mode = MODE_FIELDTESTER;
 			result.gw = num_gateways;
 			result.lat = g_last_lat;
@@ -667,6 +685,7 @@ void handle_display(void *reason)
 			result.max_dst = max_distance;
 			result.demod = 0;
 			result.lost = packet_lost;
+			result.tx_dr = api.lorawan.dr.get();
 			write_sd_entry();
 		}
 		if (has_oled && !g_settings_ui)
@@ -727,6 +746,7 @@ void handle_display(void *reason)
 			result.day = g_date_time.date;
 			result.hour = g_date_time.hour;
 			result.min = g_date_time.minute;
+			result.sec = g_date_time.second;
 			result.mode = MODE_FIELDTESTER;
 			result.gw = 0;
 			result.lat = g_last_lat;
@@ -739,6 +759,7 @@ void handle_display(void *reason)
 			result.max_dst = 0;
 			result.demod = 0;
 			result.lost = packet_lost;
+			result.tx_dr = api.lorawan.dr.get();
 			write_sd_entry();
 		}
 		if (has_oled && !g_settings_ui)

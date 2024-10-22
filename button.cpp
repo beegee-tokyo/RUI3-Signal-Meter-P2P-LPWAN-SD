@@ -574,6 +574,7 @@ void handle_button(void)
 					// Sweep through all DR (only LoRaWAN)
 					if (!tx_active)
 					{
+						dr_sweep_active = true;
 						if (!display_power)
 						{
 							oled_power(true);
@@ -616,6 +617,7 @@ void handle_button(void)
 						{
 							api.system.timer.start(RAK_TIMER_0, g_custom_parameters.send_interval, NULL);
 						}
+						dr_sweep_active = false;
 					}
 				}
 			}

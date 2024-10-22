@@ -312,16 +312,16 @@ bool create_sd_file(void)
 		{
 			if (g_custom_parameters.location_on)
 			{
-				log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"Lost\"");
+				log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"TX DR\";\"Lost\"");
 			}
 			else
 			{
-				log_file.println("\"time\";\"Mode\";\"Gw\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"Lost\"");
+				log_file.println("\"time\";\"Mode\";\"Gw\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"TX DR\";\"Lost\"");
 			}
 		}
 		else if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
 		{
-			log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"min RSSI\";\"max RSSI\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\"");
+			log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"min RSSI\";\"max RSSI\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\";\"TX DR\"");
 		}
 		else // P2P mode
 		{
@@ -382,43 +382,44 @@ void write_sd_entry(void)
 		{
 			if (g_custom_parameters.location_on)
 			{
-				// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"Lost\"");
-				bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d",
-										  result.year, result.month, result.day, result.hour, result.min,
+				// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"TX DR\";\"Lost\"");
+				bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d %02d:%02d:%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d",
+										  result.year, result.month, result.day, result.hour, result.min, result.sec,
 										  result.mode, result.gw,
 										  result.lat, result.lng,
 										  result.rx_rssi,
 										  result.rx_snr,
-										  result.demod, result.lost);
+										  result.demod, result.tx_dr, result.lost);
 			}
 			else
 			{
-				bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%d;%d;%d;%d",
-										  result.year, result.month, result.day, result.hour, result.min,
+				// log_file.println("\"time\";\"Mode\";\"Gw\";\"RX RSSI\";\"RX SNR\";\"Demod\";\"TX DR\";\"Lost\"");
+				bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d %02d:%02d:%02d;%d;%d;%d;%d;%d;%d;%d",
+										  result.year, result.month, result.day, result.hour, result.min, result.sec,
 										  result.mode, result.gw,
 										  result.rx_rssi,
 										  result.rx_snr,
-										  result.demod, result.lost);
+										  result.demod, result.tx_dr, result.lost);
 			}
 		}
 		else if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
 		{
-			// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"min RSSI\";\"max RSSI\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\"");
-			bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d",
-									  result.year, result.month, result.day, result.hour, result.min,
+			// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"min RSSI\";\"max RSSI\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\";\"TX DR\"");
+			bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d %02d:%02d:%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d;%d",
+									  result.year, result.month, result.day, result.hour, result.min, result.sec,
 									  result.mode, result.gw,
 									  result.lat, result.lng,
 									  result.min_rssi, result.max_rssi, result.rx_rssi,
 									  result.rx_snr,
-									  result.min_dst, result.max_dst);
+									  result.min_dst, result.max_dst, result.tx_dr);
 		}
 		else // LoRa P2P
 		{
 			if (g_custom_parameters.location_on)
 			{
 				// log_file.println("\"time\";\"Mode\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\"");
-				bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%.6f;%.6f;%d;%d",
-										  result.year, result.month, result.day, result.hour, result.min,
+				bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d %02d:%02d:%02d;%d;%.6f;%.6f;%d;%d",
+										  result.year, result.month, result.day, result.hour, result.min, result.sec,
 										  result.mode,
 										  result.lat, result.lng,
 										  result.rx_rssi,
@@ -426,22 +427,15 @@ void write_sd_entry(void)
 			}
 			else
 			{
-				// log_file.println("\"time\";\"Mode\";\"Lat\";\"Lng\";\"RX RSSI\";\"RX SNR\"");
-				bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%d",
-										  result.year, result.month, result.day, result.hour, result.min,
+				// log_file.println("\"time\";\"Mode\";\"RX RSSI\";\"RX SNR\"");
+				bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d %02d:%02d:%02d;%d;%d;%d",
+										  result.year, result.month, result.day, result.hour, result.min, result.sec,
 										  result.mode,
 										  result.rx_rssi,
 										  result.rx_snr);
 			}
 		}
-		// snprintf(line_entry, 511, "%04d-%02d-%02d-%02d-%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d;%d;%d",
-		// 		 result.year, result.month, result.day, result.hour, result.min,
-		// 		 result.mode, result.gw,
-		// 		 result.lat, result.lng,
-		// 		 result.min_rssi, result.max_rssi, result.rx_rssi,
-		// 		 result.rx_snr,
-		// 		 result.min_dst, result.max_dst,
-		// 		 result.demod, result.lost);
+
 		MYLOG("SD", "Writing:\r\n%s", line_entry);
 		size_t written = log_file.println(line_entry);
 		if (written != bytes_to_write + 2)  // Including /r/n

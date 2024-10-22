@@ -104,6 +104,7 @@ extern bool lorawan_mode;
 extern bool use_link_check;
 extern volatile bool tx_active;
 extern volatile bool forced_tx;
+extern volatile bool dr_sweep_active;
 extern uint8_t sync_time_status;
 extern uint16_t *region_map[];
 
@@ -212,8 +213,9 @@ struct result_s
 	uint16_t year = 24;
 	uint8_t month = 9;
 	uint8_t day = 27;
-	uint8_t hour = 27;
-	uint8_t min = 27;
+	uint8_t hour = 12;
+	uint8_t min = 0;
+	uint8_t sec = 0;
 	uint8_t mode = 0;
 	uint8_t gw = 0;
 	float lat = 14.421536;
@@ -226,6 +228,7 @@ struct result_s
 	int16_t max_dst = 0;
 	int16_t demod = 0;
 	int16_t lost = 0;
+	int8_t tx_dr = 0;
 };
 bool init_sd(void);
 bool create_sd_file(void);

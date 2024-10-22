@@ -24,6 +24,8 @@ Requires the following Arduino libraries.
 
 # Content
 - [Overview](#overview)
+- [Typical test scenarios](#typical-test-scenarios)
+- [Custom AT commands](#custom-at-commands)
 - [Hardware](#hardware)
 - [Setup with built-in UI](#setup-with-built-in-ui)
 - [Setup with AT commands](#setup-with-at-commands)
@@ -76,13 +78,39 @@ It requires setup of the devices with its LoRaWAN credentials and register on a 
 - OTAA join mode
 - LoRaWAN region
 
+### LoRaWAN Linkcheck test mode     
 It uses LinkCheck to collect information about the connection to the gateway(s).    
-With LinkCheck, the LoRaWAN server will report the number of gateways and the demodulation margin (calculated on the LoRaWAN server). The demodulation margin can give you information about the received signal quality.    
+With LinkCheck, the LoRaWAN server will report the number of gateways and the demodulation margin (calculated on the LoRaWAN server). The demodulation margin can give you information about the received signal quality (The higher the margin, the better the signal quality).     
 Extract from the _**LoRaWAN 1.0.3 Specification**_:
 <center><img src="./assets/lorawan-linkcheck.png" alt="LinkCheck"></center>
 
+### LoRaWAN FieldTester test mode    
 In addition, it supports the RAK10701 Field Tester protocol. The advantage of the Field Tester protocol is that it provides more information about the test, including distances to the gateways. The disadvantage is that this protocol requires a backend server to process the information and send it back to the device.
 
+# Typical test scenarios
+In all scenarios, tests can be performed in two ways:
+- automatic sending in a specified interval. The interval can be set either through the built-in UI or with an AT command.
+- forced sending. 3 times pushing the button enforces sending out a single packet in the pre-defined settings.
+- forced sending with DR sweep (only in LoRaWAN test modes). 4 times pushing the button enforces multiple packets to be sent out. Sending starts with the lowest possible data rate and increases the data rate with each packet until the highest possible data rate has been reached.    
+
+## Outdoor testing
+In this scenario the location tracking should be enabled to add the tester location to the test results.    
+The log files will contain the location of the tester at the time the test was performed. If no location fix could be acquired, the location will be set to Lat 0, Long 0.    
+
+## Indoor testing
+In this scenario the location tracking should be disabled, as the GNSS chip cannot aqcuire a valid location inside of buildings.    
+The log files will not contain the location of the tester.
+
+## LinkCheck testing
+If it is not possible to connect a backend server to the LoRaWAN server to process the data of the received packets, the LinkCheck method should be used. It can deliver the basic information of the connection quality and if the tester is in the coverage range of gateways.
+
+## FieldTester mode
+If a backend server is connected to the LoRaWAN server that can process the data of the received packets, the FieldTester mode gives more details in the results of the test. 
+
+## LoRa P2P testing
+This is a very basic test that only shows whether the device is in range of another LoRa P2P device that is sending out packets.    
+
+# Custom AT commands     
 This examples includes multiple custom AT commands:     
 - **`ATC+SENDINT`** to set the send interval time or heart beat time. The device will send a payload with this interval. The time is set in seconds, e.g. **`AT+SENDINT=600`** sets the send interval to 600 seconds or 10 minutes.    
 - **`ATC+MODE`** to set the test mode. 0 using LPWAN LinkCheck, 1 using LoRa P2P, 2 using Field Tester protocol.
@@ -124,9 +152,12 @@ The UI has several levels, the navigation between the levels and selection of it
 ==> Force a downlink packet to be sent
 
 ### 4 clicks
-==> Reset the device
+==> Force multiple downlink packets with DR sweep. Sending starts with the lowest possible data rate and increases the data rate with each packet until the highest possible data rate has been reached.
 
 ### 5 clicks
+==> Reset the device
+
+### 6 clicks
 ==> Enter Bootloader Mode
 
 ### Long Press
@@ -373,16 +404,16 @@ When in Linkcheck mode for LoRaWAN, the log file has the following format:
 
 ### If location is enabled
 
-time;Mode;Gw;Lat;Lng;RX RSSI;RX SNR;Demod;Lost
+time;Mode;Gw;Lat;Lng;RX RSSI;RX SNR;Demod;TX DR;Lost
 
 ### If location is disabled
 
-time;Mode;Gw;RX RSSI;RX SNR;Demod;Lost
+time;Mode;Gw;RX RSSI;RX SNR;Demod;TX DR;Lost
 
-| time | Mode | Gw | Lat | Lng | RX RSSI | RX SNR | Demod | Lost |
-| ---  | ---  | --- | --- | --- | ---    | ---    | ---   | ---  |
-| Time stamp (available if LNS has provided the time or if a RTC module is attached) | 0 for LinkCheck mode | Number of gateways | Latitude (if location is active and location fix) | Longitude (if location is active and location fix) | RSSI of downlink | SNR of downlink | demod value | number of lost packets |
-| 2024-10-07-14-35 | 0 | 1 | 14.521355 | 121.106880 | -91 | 8 | 29 | 0  |
+| time | Mode | Gw | Lat | Lng | RX RSSI | RX SNR | Demod | TX DR | Lost |
+| ---  | ---  | --- | --- | --- | ---    | ---    | ---   | ---  | ---  |
+| Time stamp (available if LNS has provided the time or if a RTC module is attached) | 0 for LinkCheck mode | Number of gateways | Latitude (if location is active and location fix) | Longitude (if location is active and location fix) | RSSI of downlink | SNR of downlink | demod value | TX datarate | number of lost packets  |
+| 2024-10-07 14:35:20 | 0 | 1 | 14.521355 | 121.106880 | -91 | 8 | 29 | 3 |0  |
 
 ----
 
@@ -390,12 +421,12 @@ time;Mode;Gw;RX RSSI;RX SNR;Demod;Lost
 
 When in Field Tester mode for LoRaWAN, the log file has the following format:    
 
-time;Mode;Gw;Lat;Lng;min RSSI;max RSSI;RX RSSI;RX SNR;min Dist;max Dist
+time;Mode;Gw;Lat;Lng;min RSSI;max RSSI;RX RSSI;RX SNR;min Dist;max Dist; TX DR
 
-| time | Mode | Gw | Lat | Lng | min RSSI | max RSSI | RX RSSI | RX SNR | min Dist | max Dist |
-| ---  | ---  | --- | --- | --- | ---     | ---      | ---     | ---    | ---      | ---      |
-| Time stamp (available if LNS has provided the time or if a RTC module is attached) | 2 for Field Tester mode | Number of gateways | Latitude (can be 0.0 if no location fix, e.g. indoor testing) | Longitude (can be 0.0 if no location fix, e.g. indoor testing) | min RSSI seen by gateways | max RSSI seen by gateways | RSSI of downlink | SNR of downlink | min distance to gateway(s) | max distance to gateway(s) |
-| 2024-10-07-14-39 | 2 | 1 | 14.521355 | 121.106880 | -50 | -50 | -59 | 7 | 250 | 250      |
+| time | Mode | Gw | Lat | Lng | min RSSI | max RSSI | RX RSSI | RX SNR | min Dist | max Dist | TX DR |
+| ---  | ---  | --- | --- | --- | ---     | ---      | ---     | ---    | ---      | ---      | ---   |
+| Time stamp (available if LNS has provided the time or if a RTC module is attached) | 2 for Field Tester mode | Number of gateways | Latitude (can be 0.0 if no location fix, e.g. indoor testing) | Longitude (can be 0.0 if no location fix, e.g. indoor testing) | min RSSI seen by gateways | max RSSI seen by gateways | RSSI of downlink | SNR of downlink | min distance to gateway(s) | max distance to gateway(s) | TX datarate |
+| 2024-10-07 14:39:00 | 2 | 1 | 14.521355 | 121.106880 | -50 | -50 | -59 | 7 | 250 | 250      | 5 |
 
 ----
 
@@ -414,7 +445,7 @@ time;Mode;RX RSSI;RX SNR
 | time | Mode | Lat | Lng | RX RSSI | RX SNR |
 | ---  | ---  | --- | --- | ---     | ---    |
 | Time stamp (available if LNS has provided the time or if a RTC module is attached) | 1 for LinkCheck mode | Latitude (if location is active and location fix) | Longitude (if location is active and location fix) | RSSI of downlink | SNR of downlink |
-| 2024-10-07-14-51 | 1 | 14.521355 | 121.106880 | -38 | 12    |
+| 2024-10-07 14:51:21 | 1 | 14.521355 | 121.106880 | -38 | 12    |
 
 ----
 
@@ -422,7 +453,7 @@ time;Mode;RX RSSI;RX SNR
 
 The enclosure is 3D printed and kept as simple as possible. Two main parts are needed. The bottom and the lid are sliding into each other to give a basic dust protection and are secured with four screws.    
 In addition three smaller parts are used to give a dust protection to the user button, power switch and reset button. The LED's and the OLED screen can be protected by adding a thin transparent plastic foil.    
-Only part that has not (yet) a protection is the USB port.    
+For the USB port and SD card slot rubber lids are used.    
 
 <center><img src="./assets/enclosure-topview.png" alt="Enclosure Top View"></center>
 

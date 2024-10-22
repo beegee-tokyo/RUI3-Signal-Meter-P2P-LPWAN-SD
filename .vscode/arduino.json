@@ -10,7 +10,7 @@
     "version": "2.0.1",
     "project": "RAK10706-Signal-Meter-SD",
     "board": "rak_rui:nrf52:WisCoreRAK4631Board",
-    "port": "COM38",
+    "port": "COM39",
     "sketch": "RUI3-Signal-Meter-P2P-LPWAN-SD.ino",
     "output": "build"
 }
