@@ -55,7 +55,7 @@ int rtc_command_handler(SERIAL_PORT port, char *cmd, stParam *param);
 bool init_interval_at(void)
 {
 	return api.system.atMode.add((char *)"SENDINT",
-								 (char *)"Set/Get the interval sending time values in seconds 0 = off, max 2,147,483 seconds",
+								 (char *)"Set/Get the interval sending time values in seconds 0 = off, max 3600 seconds (1 hour)",
 								 (char *)"SENDINT", interval_send_handler,
 								 RAK_ATCMD_PERM_WRITE | RAK_ATCMD_PERM_READ);
 }
@@ -91,6 +91,11 @@ int interval_send_handler(SERIAL_PORT port, char *cmd, stParam *param)
 		uint32_t new_send_freq = strtoul(param->argv[0], NULL, 10);
 
 		MYLOG("AT_CMD", "Requested interval %ld", new_send_freq);
+
+		if (new_send_freq >= 3601L)
+		{
+			return AT_PARAM_ERROR;
+		}
 
 		g_custom_parameters.send_interval = new_send_freq * 1000;
 

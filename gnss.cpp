@@ -377,7 +377,7 @@ void gnss_handler(void *)
 			if (!api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), 1, true, 1))
 			{
 				tx_active = false;
-				MYLOG("APP", "LoRaWAN send returned error");
+				MYLOG("GNSS", "LoRaWAN send returned error");
 			}
 			else
 			{

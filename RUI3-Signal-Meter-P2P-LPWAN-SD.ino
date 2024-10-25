@@ -38,8 +38,6 @@ volatile bool dr_sweep_active = false;
 
 /** LoRa mode */
 bool lorawan_mode = true;
-/** Flag if confirmed packets or LinkCheck should be used */
-bool use_link_check = true;
 
 /** Flag if OLED was found */
 bool has_oled = false;
@@ -65,6 +63,9 @@ bool has_sd = false;
 
 /** Flag if new file is created */
 bool has_file = false;
+
+/** Flag if GNSS is working */
+bool has_gnss = false;
 
 /** Name of current log file */
 char volatile file_name[] = "0000-log.csv";
@@ -340,14 +341,14 @@ void send_packet(void *data)
 /**
  * @brief Display handler
  *
- * @param reason 1 = RX packet display
- *               2 = TX failed display (only LPW mode)
+ * @param reason 1 = RX packet display (only P2P mode)
+ *               2 = TX failed display (only LPW LinkCheck mode)
  *               3 = Join failed (only LPW mode)
  *               4 = Linkcheck result display (only LPW LinkCheck mode)
  *               5 = Join success (only LPW mode)
- *               6 = Field Tester downlink packet
- *               7 = Field Tester no downlink packet
- *               8 = P2P manual TX finished
+ *               6 = Field Tester downlink packet (only FieldTester mode )
+ *               7 = Field Tester no downlink packet (only FieldTester mode )
+ *               8 = P2P TX finished (only P2P mode)
  */
 void handle_display(void *reason)
 {
@@ -357,8 +358,14 @@ void handle_display(void *reason)
 	if (has_oled && !g_settings_ui)
 	{
 		oled_clear();
-		sprintf(line_str, "RAK Signal Meter");
-
+		if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
+		{
+			sprintf(line_str, "RAK Field Tester");
+		}
+		else
+		{
+			sprintf(line_str, "RAK Signal Meter");
+		}
 		oled_write_header(line_str);
 	}
 	// Get the wakeup reason
@@ -367,9 +374,9 @@ void handle_display(void *reason)
 	// Check if we have a reason
 	if (disp_reason == NULL)
 	{
-		Serial.println("Bug in code!");
+		MYLOG("APP", "Bug in code!");
 	}
-	else if (disp_reason[0] == 1)
+	else if (disp_reason[0] == 1) // RX packet display (only P2P mode)
 	{
 		// MYLOG("APP", "RX_EVENT %d, disp_reason[0]);
 		// RX event display
@@ -401,7 +408,6 @@ void handle_display(void *reason)
 			result.max_dst = 0;
 			result.demod = 0;
 			result.lost = packet_lost;
-			result.tx_dr = api.lorawan.dr.get();
 			write_sd_entry();
 		}
 		if (has_oled && !g_settings_ui)
@@ -462,14 +468,113 @@ void handle_display(void *reason)
 			oled_write_line(4, 64, line_str);
 			oled_display();
 		}
-		Serial.println("LPW P2P mode");
-		Serial.printf("Packet # %d RSSI %d SNR %d\r\n", packet_num, last_rssi, last_snr);
-		Serial.printf("F %.3f SF %d BW %d\r\n",
-					  (float)api.lora.pfreq.get() / 1000000.0,
-					  api.lora.psf.get(),
-					  (api.lora.pbw.get() + 1) * 125);
+		MYLOG("APP", "LPW P2P mode");
+		MYLOG("APP", "Packet # %d RSSI %d SNR %d", packet_num, last_rssi, last_snr);
+		MYLOG("APP", "F %.3f SF %d BW %d",
+			  (float)api.lora.pfreq.get() / 1000000.0,
+			  api.lora.psf.get(),
+			  (api.lora.pbw.get() + 1) * 125);
 	}
-	else if (disp_reason[0] == 3)
+	else if (display_reason == 2) // TX failed display (only LPW LinkCheck mode)
+	{
+		tx_active = false;
+
+		if (has_sd)
+		{
+			if (has_rtc)
+			{
+				read_rak12002();
+			}
+			else
+			{
+				get_mcu_time();
+			}
+			result.year = g_date_time.year;
+			result.month = g_date_time.month;
+			result.day = g_date_time.date;
+			result.hour = g_date_time.hour;
+			result.min = g_date_time.minute;
+			result.sec = g_date_time.second;
+			result.mode = MODE_LINKCHECK;
+			result.gw = 0;
+			result.lat = g_last_lat;
+			result.lng = g_last_long;
+			result.min_rssi = 0;
+			result.max_rssi = 0;
+			result.rx_rssi = 0;
+			result.rx_snr = 0;
+			result.min_dst = 0;
+			result.max_dst = 0;
+			result.demod = 0;
+			result.lost = packet_lost;
+			result.tx_dr = api.lorawan.dr.get();
+			write_sd_entry();
+		}
+		if (has_oled && !g_settings_ui)
+		{
+			sprintf(line_str, "LinkCheck Mode");
+			oled_write_line(0, 0, line_str);
+			sprintf(line_str, "TX Error ", tx_fail_status);
+			oled_write_line(2, 0, line_str);
+			switch (tx_fail_status)
+			{
+			case RAK_LORAMAC_STATUS_ERROR:
+				sprintf(line_str, "Service error");
+				break;
+			case RAK_LORAMAC_STATUS_TX_TIMEOUT:
+				sprintf(line_str, "TX timeout");
+				break;
+			case RAK_LORAMAC_STATUS_RX1_TIMEOUT:
+				sprintf(line_str, "RX1 timeout");
+				break;
+			case RAK_LORAMAC_STATUS_RX2_TIMEOUT:
+				sprintf(line_str, "RX2 timeout");
+				break;
+			case RAK_LORAMAC_STATUS_RX1_ERROR:
+				sprintf(line_str, "RX1 error");
+				break;
+			case RAK_LORAMAC_STATUS_RX2_ERROR:
+				sprintf(line_str, "RX2 error");
+				break;
+			case RAK_LORAMAC_STATUS_JOIN_FAIL:
+				sprintf(line_str, "Join failed");
+				break;
+			case RAK_LORAMAC_STATUS_DOWNLINK_REPEATED:
+				sprintf(line_str, "Dowlink frame error");
+				break;
+			case RAK_LORAMAC_STATUS_TX_DR_PAYLOAD_SIZE_ERROR:
+				sprintf(line_str, "Payload size error");
+				break;
+			case RAK_LORAMAC_STATUS_DOWNLINK_TOO_MANY_FRAMES_LOSS:
+				sprintf(line_str, "Fcnt loss error");
+				break;
+			case RAK_LORAMAC_STATUS_ADDRESS_FAIL:
+				sprintf(line_str, "Adress error");
+				break;
+			case RAK_LORAMAC_STATUS_MIC_FAIL:
+				sprintf(line_str, "MIC error");
+				break;
+			case RAK_LORAMAC_STATUS_MULTICAST_FAIL:
+				sprintf(line_str, "Multicast error");
+				break;
+			case RAK_LORAMAC_STATUS_BEACON_LOCKED:
+				sprintf(line_str, "Beacon locked");
+				break;
+			case RAK_LORAMAC_STATUS_BEACON_LOST:
+				sprintf(line_str, "Beacon lost");
+				break;
+			case RAK_LORAMAC_STATUS_BEACON_NOT_FOUND:
+				sprintf(line_str, "Beacon not found");
+				break;
+			default:
+				sprintf(line_str, "Unknown error");
+				break;
+			}
+			oled_write_line(4, 0, line_str);
+			oled_display();
+		}
+	}
+	else if (disp_reason[0] == 3) // Join failed (only LPW mode)
 	{
 		// MYLOG("APP", "JOIN_ERROR %d\n", disp_reason[0]);
 		if (has_oled && !g_settings_ui)
@@ -492,30 +597,7 @@ void handle_display(void *reason)
 			oled_display();
 		}
 	}
-	else if (disp_reason[0] == 5)
-	{
-		// MYLOG("APP", "JOIN_SUCCESS %d\n", disp_reason[0]);
-		if (has_oled && !g_settings_ui)
-		{
-			switch (g_custom_parameters.test_mode)
-			{
-			case MODE_LINKCHECK:
-				oled_write_line(0, 0, (char *)"LinkCheck mode");
-				break;
-			case MODE_FIELDTESTER:
-				oled_write_line(0, 0, (char *)"Field Tester mode");
-				break;
-			}
-			sprintf(line_str, "Test interval %lds", g_custom_parameters.send_interval / 1000);
-			oled_write_line(1, 0, line_str);
-			oled_write_line(2, 0, (char *)" ");
-			sprintf(line_str, "Device joined network");
-			oled_write_line(3, 0, line_str);
-			oled_write_line(4, 0, (char *)" ");
-			oled_display();
-		}
-	}
-	else if (disp_reason[0] == 4)
+	else if (disp_reason[0] == 4) // Linkcheck result display (only LPW LinkCheck mode)
 	{
 		// MYLOG("APP", "LINK_CHECK %d\n", disp_reason[0]);
 		// LinkCheck result event display
@@ -557,19 +639,19 @@ void handle_display(void *reason)
 
 			if (link_check_state == 0)
 			{
-				sprintf(line_str, "Demod Margin    %d", link_check_demod_margin);
+				sprintf(line_str, "UL Demod Margin  %d", link_check_demod_margin);
 				oled_write_line(1, 0, line_str);
-				sprintf(line_str, "Sent %d", packet_num);
+				sprintf(line_str, "UL DR %d", api.lorawan.dr.get());
 				oled_write_line(2, 0, line_str);
-				sprintf(line_str, "Lost %d", packet_lost);
-				oled_write_line(2, 64, line_str);
 				sprintf(line_str, "%d GW(s)", link_check_gateways);
+				oled_write_line(2, 64, line_str);
+				sprintf(line_str, "Sent %d", packet_num);
 				oled_write_line(3, 0, line_str);
-				sprintf(line_str, "DR %d", api.lorawan.dr.get());
+				sprintf(line_str, "Lost %d", packet_lost);
 				oled_write_line(3, 64, line_str);
-				sprintf(line_str, "RSSI %d", last_rssi);
+				sprintf(line_str, "DL RSSI %d", last_rssi);
 				oled_write_line(4, 0, line_str);
-				sprintf(line_str, "SNR %d", last_snr);
+				sprintf(line_str, "DL SNR %d", last_snr);
 				oled_write_line(4, 64, line_str);
 			}
 			else
@@ -642,20 +724,43 @@ void handle_display(void *reason)
 			}
 			oled_display();
 		}
-		Serial.printf("LinkCheck %s\r\n", link_check_state == 0 ? "OK" : "NOK");
-		Serial.printf("Packet # %d RSSI %d SNR %d\r\n", packet_num, last_rssi, last_snr);
-		Serial.printf("GW # %d Demod Margin %d\r\n", link_check_gateways, link_check_demod_margin);
+		MYLOG("APP", "LinkCheck %s", link_check_state == 0 ? "OK" : "NOK");
+		MYLOG("APP", "Packet # %d RSSI %d SNR %d", packet_num, last_rssi, last_snr);
+		MYLOG("APP", "GW # %d Demod Margin %d", link_check_gateways, link_check_demod_margin);
 	}
-	else if (display_reason == 6)
+	else if (disp_reason[0] == 5) // Join success (only LPW mode)
+	{
+		// MYLOG("APP", "JOIN_SUCCESS %d\n", disp_reason[0]);
+		if (has_oled && !g_settings_ui)
+		{
+			switch (g_custom_parameters.test_mode)
+			{
+			case MODE_LINKCHECK:
+				oled_write_line(0, 0, (char *)"LinkCheck mode");
+				break;
+			case MODE_FIELDTESTER:
+				oled_write_line(0, 0, (char *)"Field Tester mode");
+				break;
+			}
+			sprintf(line_str, "Test interval %lds", g_custom_parameters.send_interval / 1000);
+			oled_write_line(1, 0, line_str);
+			oled_write_line(2, 0, (char *)" ");
+			sprintf(line_str, "Device joined network");
+			oled_write_line(3, 0, line_str);
+			oled_write_line(4, 0, (char *)" ");
+			oled_display();
+		}
+	}
+	else if (display_reason == 6) // Field Tester downlink packet (only FieldTester mode )
 	{
 		int16_t min_rssi = field_tester_pckg[1] - 200;
 		int16_t max_rssi = field_tester_pckg[2] - 200;
 		int16_t min_distance = field_tester_pckg[3] * 250;
 		int16_t max_distance = field_tester_pckg[4] * 250;
 		int8_t num_gateways = field_tester_pckg[5];
-		Serial.printf("+EVT:FieldTester %d gateways\r\n", num_gateways);
-		Serial.printf("+EVT:RSSI min %d max %d\r\n", min_rssi, max_rssi);
-		Serial.printf("+EVT:Distance min %d max %d\r\n", min_distance, max_distance);
+		MYLOG("APP", "+EVT:FieldTester %d gateways", num_gateways);
+		MYLOG("APP", "+EVT:RSSI min %d max %d", min_rssi, max_rssi);
+		MYLOG("APP", "+EVT:Distance min %d max %d", min_distance, max_distance);
 
 		if (has_sd)
 		{
@@ -727,9 +832,9 @@ void handle_display(void *reason)
 			oled_display();
 		}
 	}
-	else if (display_reason == 7)
+	else if (display_reason == 7) // Field Tester no downlink packet (only FieldTester mode )
 	{
-		Serial.printf("+EVT:FieldTester no downlink\r\n");
+		MYLOG("APP", "+EVT:FieldTester no downlink");
 
 		if (has_sd)
 		{
@@ -774,20 +879,31 @@ void handle_display(void *reason)
 			oled_display();
 		}
 	}
-	else if (display_reason == 8)
+	else if (display_reason == 8) // P2P TX finished (only P2P mode)
 	{
-		Serial.printf("+EVT:P2P TX finished\r\n");
-		tx_active = false;
-
-		if (has_oled && !g_settings_ui)
+		switch (g_custom_parameters.test_mode)
 		{
+		case MODE_LINKCHECK:
 			oled_clear();
 			oled_write_header((char *)"RAK Signal Meter");
-
-			sprintf(line_str, "P2P TX finished");
-			oled_write_line(0, 0, line_str);
+			oled_write_line(0, 0, (char *)"LinkCheck mode");
+			sprintf(line_str, "TX finished");
+			oled_write_line(3, 0, line_str);
 			oled_display();
+			break;
+		case MODE_P2P:
+			if (has_oled && !g_settings_ui)
+			{
+				oled_clear();
+				oled_write_header((char *)"RAK Signal Meter");
+				oled_write_line(0, 0, (char *)"LoRa P2P mode");
+				sprintf(line_str, "TX finished");
+				oled_write_line(3, 0, line_str);
+				oled_display();
+			}
+			break;
 		}
+		tx_active = false;
 	}
 
 	// digitalWrite(LED_GREEN, LOW);
@@ -873,12 +989,6 @@ void recv_cb_lpw(SERVICE_LORA_RECEIVE_T *data)
 		{
 			MYLOG("RX-CB", "Wrong fPort %d", data->Port);
 		}
-		return;
-	}
-	if (!use_link_check)
-	{
-		display_reason = 1;
-		api.system.timer.start(RAK_TIMER_1, 250, &display_reason);
 	}
 }
 
@@ -892,20 +1002,26 @@ void send_cb_lpw(int32_t status)
 	if (status != RAK_LORAMAC_STATUS_OK)
 	{
 		tx_active = false;
-		MYLOG("APP", "LMC status %d\n", RAK_LORAMAC_STATUS_OK);
+		MYLOG("APP", "LMC status %d\n", status);
 		tx_fail_status = status;
 
 		if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
 		{
+			packet_lost++;
 			display_reason = 7;
 			api.system.timer.start(RAK_TIMER_1, 250, &display_reason);
 		}
-		else if (!use_link_check)
+		else
 		{
 			packet_lost++;
 			display_reason = 2;
 			api.system.timer.start(RAK_TIMER_1, 250, &display_reason);
 		}
+	}
+	else
+	{
+		display_reason = 8;
+		api.system.timer.start(RAK_TIMER_1, 250, &display_reason);
 	}
 }
 
@@ -1016,6 +1132,11 @@ void setup(void)
 	// Check if OLED is available
 	Wire.begin();
 	has_oled = init_oled();
+	if (!has_oled)
+	{
+		MYLOG("APP", "No OLED found");
+	}
+
 	if (has_oled)
 	{
 		sprintf(line_str, "RAK Signal Meter");
@@ -1032,7 +1153,7 @@ void setup(void)
 	if (NRF_POWER->USBREGSTATUS == 3)
 	{
 		// Give a chance to enter AT+BOOT
-		delay(5000);
+		delay(2000);
 	}
 	else
 	{
@@ -1062,22 +1183,17 @@ void setup(void)
 	// // Check if OLED is available
 	// Wire.begin();
 	// has_oled = init_oled();
-	if (has_oled)
-	{
-		oled_clear();
-		sprintf(line_str, "RAK Signal Meter");
-		oled_write_header(line_str);
-	}
+	// if (has_oled)
+	// {
+	// 	oled_clear();
+	// 	sprintf(line_str, "RAK Signal Meter");
+	// 	oled_write_header(line_str);
+	// }
 
 	digitalWrite(LED_GREEN, HIGH);
 
 	digitalWrite(LED_GREEN, LOW);
 	digitalWrite(LED_BLUE, LOW);
-
-	if (!has_oled)
-	{
-		MYLOG("APP", "No OLED found");
-	}
 
 	// Initialize custom AT commands
 	if (!init_status_at())
@@ -1116,20 +1232,25 @@ void setup(void)
 	if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
 	{
 		MYLOG("APP", "Init GNSS as active");
-		init_gnss(true);
+		has_gnss = init_gnss(true);
 	}
 	else
 	{
 		if (!g_custom_parameters.location_on)
 		{
 			MYLOG("APP", "Init GNSS as inactive");
-			init_gnss(false);
+			has_gnss = init_gnss(false);
 		}
 		else
 		{
 			MYLOG("APP", "Init GNSS as active");
-			init_gnss(true);
+			has_gnss = init_gnss(true);
 		}
+	}
+
+	if (has_gnss)
+	{
+		oled_add_line((char *)"GNSS OK");
 	}
 
 	// Initialize RTC
@@ -1147,6 +1268,12 @@ void setup(void)
 	{
 		MYLOG("APP", "No RTC found");
 	}
+
+	if (has_rtc)
+	{
+		oled_add_line((char *)"RTC OK");
+	}
+
 	// Initialize SD card
 	has_sd = init_sd();
 	if (!has_sd)
@@ -1165,11 +1292,16 @@ void setup(void)
 		init_dump_logs_at();
 	}
 
+	if (has_sd)
+	{
+		oled_add_line((char *)"SD Card OK");
+	}
+
 	// Setup callbacks and timers depending on test mode
 	switch (g_custom_parameters.test_mode)
 	{
 	default:
-		Serial.println("Invalid test mode, use LinkCheck");
+		MYLOG("APP", "Invalid test mode, use LinkCheck");
 		if (has_oled)
 		{
 			sprintf(line_str, "Invalid test mode");
@@ -1268,7 +1400,6 @@ void loop(void)
 void set_linkcheck(void)
 {
 	MYLOG("APP", "Found LinkCheck Mode");
-	use_link_check = true;
 	lorawan_mode = true;
 	if (api.lora.nwm.get())
 	{

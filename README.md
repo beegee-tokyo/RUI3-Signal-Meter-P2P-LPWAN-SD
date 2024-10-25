@@ -148,16 +148,19 @@ The UI has several levels, the navigation between the levels and selection of it
 ### Double click
 ==> enter the Settings UI (stops the testing mode, no more test packets are sent and received packets are ignored)
 
-### Tripe click
+### 3 clicks
 ==> Force a downlink packet to be sent
 
 ### 4 clicks
 ==> Force multiple downlink packets with DR sweep. Sending starts with the lowest possible data rate and increases the data rate with each packet until the highest possible data rate has been reached.
 
 ### 5 clicks
-==> Reset the device
+==> no function (to avoid accidental reset of device)
 
 ### 6 clicks
+==> Reset the device
+
+### 7 clicks
 ==> Enter Bootloader Mode
 
 ### Long Press
@@ -562,17 +565,9 @@ void send_packet(void *data)
 {
 	Serial.println("Send packet");
 	uint8_t payload[4] = {0x01, 0x02, 0x03, 0x04};
-	if (use_link_check)
-	{
-		// Linkcheck is enabled, send an unconfirmed packet
-		api.lorawan.send(4, payload, 2, false);
-		tx_active = true;
-	}
-	else
-	{
-		// Linkcheck is disabled, send a confirmed packet
-		api.lorawan.send(4, payload, 2, true, 8);
-		tx_active = true;
+
+	api.lorawan.send(4, payload, 2, false);
+	tx_active = true;
 	}
 }
 ```

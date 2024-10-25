@@ -570,7 +570,7 @@ void handle_button(void)
 			if (api.lorawan.nwm.get() == 1)
 			{
 				if (g_custom_parameters.test_mode != MODE_P2P)
-				{ 
+				{
 					// Sweep through all DR (only LoRaWAN)
 					if (!tx_active)
 					{
@@ -684,7 +684,7 @@ void handle_button(void)
 					ui_max_dr = 5;
 					break;
 				}
-				selected_item = ui_last_dr + 10;
+				selected_item = ui_last_dr;
 				display_show_menu(back_menu, back_menu_len, sel_menu, selected_item, g_last_settings.display_saver, g_last_settings.location_on);
 			}
 			break;
@@ -808,19 +808,22 @@ void handle_button(void)
 		}
 		else
 		{
-			if (!tx_active)
+			if (api.lorawan.nwm.get() == 1)
 			{
-				if (!display_power)
+				if (!tx_active)
 				{
-					oled_power(true);
-				}
-				MYLOG("BTN", "Manual send triggered");
-				api.system.timer.stop(RAK_TIMER_0);
-				forced_tx = true;
-				send_packet(NULL);
-				if (g_custom_parameters.send_interval != 0)
-				{
-					api.system.timer.start(RAK_TIMER_0, g_custom_parameters.send_interval, NULL);
+					if (!display_power)
+					{
+						oled_power(true);
+					}
+					MYLOG("BTN", "Manual send triggered");
+					api.system.timer.stop(RAK_TIMER_0);
+					forced_tx = true;
+					send_packet(NULL);
+					if (g_custom_parameters.send_interval != 0)
+					{
+						api.system.timer.start(RAK_TIMER_0, g_custom_parameters.send_interval, NULL);
+					}
 				}
 			}
 		}

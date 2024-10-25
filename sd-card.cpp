@@ -21,6 +21,9 @@ File log_file;
 /** Flag if write or file create failed */
 volatile bool sd_card_error = false;
 
+/** Number of lines written to file */
+volatile uint16_t lines_written = 0;
+
 /**
  * @brief Initialize SD card
  *
@@ -32,54 +35,53 @@ bool init_sd(void)
 	digitalWrite(WB_IO2, HIGH);
 	delay(50);
 
-	// #if MY_DEBUG > 0
+#if 0
+	Sd2Card card;
+	SdVolume volume;
 
-	// 	Sd2Card card;
-	// 	SdVolume volume;
+	if (!card.init(SPI_QUARTER_SPEED, WB_SPI_CS)) // SPI_QUARTER_SPEED SPI_HALF_SPEED SPI_FULL_SPEED
+	{
+		MYLOG("SD", "Card Init Failed! Please make sure the card is inserted!");
+		return false;
+	}
 
-	// 	if (!card.init(SPI_QUARTER_SPEED, WB_SPI_CS)) // SPI_QUARTER_SPEED SPI_HALF_SPEED SPI_FULL_SPEED
-	// 	{
-	// 		MYLOG("SD", "Card Init Failed! Please make sure the card is inserted!");
-	// 		return false;
-	// 	}
+	switch (card.type())
+	{
+	case SD_CARD_TYPE_SD1:
+		MYLOG("SD", "Cardtype SD1");
+		break;
+	case SD_CARD_TYPE_SD2:
+		MYLOG("SD", "Cardtype SD2");
+		break;
+	case SD_CARD_TYPE_SDHC:
+		MYLOG("SD", "Cardtype SDHC");
+		break;
+	default:
+		MYLOG("SD", "Cardtype inknown");
+	}
 
-	// 	switch (card.type())
-	// 	{
-	// 	case SD_CARD_TYPE_SD1:
-	// 		MYLOG("SD", "Cardtype SD1");
-	// 		break;
-	// 	case SD_CARD_TYPE_SD2:
-	// 		MYLOG("SD", "Cardtype SD2");
-	// 		break;
-	// 	case SD_CARD_TYPE_SDHC:
-	// 		MYLOG("SD", "Cardtype SDHC");
-	// 		break;
-	// 	default:
-	// 		MYLOG("SD", "Cardtype inknown");
-	// 	}
+	if (!volume.init(card))
+	{
+		MYLOG("SD", "Could not find FAT16/FAT32 partition.\nMake sure you've formatted the card");
+		return false;
+	}
 
-	// 	if (!volume.init(card))
-	// 	{
-	// 		MYLOG("SD", "Could not find FAT16/FAT32 partition.\nMake sure you've formatted the card");
-	// 		return false;
-	// 	}
+	MYLOG("SD", "Clusters: %ld", volume.clusterCount());
+	MYLOG("SD", "Blocks x Cluster: %d", volume.blocksPerCluster());
 
-	// 	MYLOG("SD", "Clusters: %ld", volume.clusterCount());
-	// 	MYLOG("SD", "Blocks x Cluster: %d", volume.blocksPerCluster());
+	MYLOG("SD", "Total Blocks: %ld", volume.blocksPerCluster() * volume.clusterCount());
 
-	// 	MYLOG("SD", "Total Blocks: %ld", volume.blocksPerCluster() * volume.clusterCount());
+	// print the type and size of the first FAT-type volume
+	uint32_t volumesize;
+	MYLOG("SD", "Volume type is:    FAT%d", volume.fatType(), DEC);
 
-	// 	// print the type and size of the first FAT-type volume
-	// 	uint32_t volumesize;
-	// 	MYLOG("SD", "Volume type is:    FAT%d", volume.fatType(), DEC);
-
-	// 	volumesize = volume.blocksPerCluster(); // clusters are collections of blocks
-	// 	volumesize *= volume.clusterCount();	// we'll have a lot of clusters
-	// 	volumesize /= 2;						// SD card blocks are always 512 bytes (2 blocks are 1 KB)
-	// 	MYLOG("SD", "Volume size (KB): %ld", volumesize);
-	// 	MYLOG("SD", "Volume size (MB): %ld", volumesize / 1024);
-	// 	MYLOG("SD", "Volume size (GB): %.2f", (float)volumesize / 1024 / 1024.0);
-	// #endif
+	volumesize = volume.blocksPerCluster(); // clusters are collections of blocks
+	volumesize *= volume.clusterCount();	// we'll have a lot of clusters
+	volumesize /= 2;						// SD card blocks are always 512 bytes (2 blocks are 1 KB)
+	MYLOG("SD", "Volume size (KB): %ld", volumesize);
+	MYLOG("SD", "Volume size (MB): %ld", volumesize / 1024);
+	MYLOG("SD", "Volume size (GB): %.2f", (float)volumesize / 1024 / 1024.0);
+#endif
 
 	if (!SD.begin(WB_SPI_CS))
 	{
@@ -87,31 +89,34 @@ bool init_sd(void)
 		return false;
 	}
 
-	// File dir_file = SD.open("/", FILE_WRITE);
-	// dir_sd(dir_file);
-	// dir_file.close();
+#if 0
+	File dir_file = SD.open("/", FILE_WRITE);
+	dir_sd(dir_file);
+	dir_file.close();
 
-	// uint16_t file_num = 0;
-	// sprintf((char *)file_name, "%04d-log.csv", file_num);
-	// while (true)
-	// {
-	// 	if (SD.exists((const char *)file_name))
-	// 	{
-	// 		MYLOG("SD", "Content of %s:", file_name);
-	// 		dump_sd_file((const char *)file_name);
-	// 		file_num++;
-	// 		sprintf((char *)file_name, "%04d-log.csv", file_num);
-	// 	}
-	// 	else
-	// 	{
-	// 		break;
-	// 	}
-	// }
+	uint16_t file_num = 0;
+	sprintf((char *)file_name, "%04d-log.csv", file_num);
+	while (true)
+	{
+		if (SD.exists((const char *)file_name))
+		{
+			MYLOG("SD", "Content of %s:", file_name);
+			dump_sd_file((const char *)file_name);
+			file_num++;
+			sprintf((char *)file_name, "%04d-log.csv", file_num);
+		}
+		else
+		{
+			break;
+		}
+	}
+#endif
 
 	SD.end();
 	return true;
 }
 
+#if 0
 /**
  * @brief Send directory of a folder to the Serial port
  *
@@ -145,6 +150,7 @@ void dir_sd(File dir)
 		log_file.close();
 	}
 }
+#endif
 
 /**
  * @brief Send content of all files to the Serial port
@@ -165,15 +171,12 @@ void dump_all_sd_files(void)
 			log_file = SD.open((const char *)file_name, FILE_READ); // re-open the file for reading.
 			if (log_file)
 			{
-				// MYLOG("SD", "=====================================================");
-
 				while (log_file.available())
 				{
 					Serial.write(log_file.read()); // read from the file until there's nothing else in it.
 					delay(5);
 				}
 				log_file.close(); // close the file.
-				// MYLOG("SD", "=====================================================");
 				Serial.println("=====================================================");
 				Serial.flush();
 			}
@@ -211,15 +214,12 @@ void dump_sd_file(const char *path)
 	log_file = SD.open(path, FILE_READ); // re-open the file for reading.
 	if (log_file)
 	{
-		// MYLOG("SD", "=====================================================");
-
 		while (log_file.available())
 		{
 			Serial.write(log_file.read()); // read from the file until there's nothing else in it.
 			delay(5);
 		}
 		log_file.close(); // close the file.
-						  // MYLOG("SD", "=====================================================");
 	}
 	else
 	{
@@ -321,7 +321,7 @@ bool create_sd_file(void)
 		}
 		else if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
 		{
-			log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"min RSSI\";\"max RSSI\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\";\"TX DR\"");
+			log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"min RSSI\";\"max RSSI\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\";\"TX DR\";\"Lost\"");
 		}
 		else // P2P mode
 		{
@@ -337,7 +337,6 @@ bool create_sd_file(void)
 		log_file.flush();
 		log_file.close();
 		SD.end();
-
 		sd_card_error = false;
 		return true;
 	}
@@ -404,14 +403,14 @@ void write_sd_entry(void)
 		}
 		else if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
 		{
-			// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"min RSSI\";\"max RSSI\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\";\"TX DR\"");
-			bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d %02d:%02d:%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d;%d",
+			// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"min RSSI\";\"max RSSI\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\";\"TX DR\";\"Lost"");
+			bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d %02d:%02d:%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d;%d;%d",
 									  result.year, result.month, result.day, result.hour, result.min, result.sec,
 									  result.mode, result.gw,
 									  result.lat, result.lng,
 									  result.min_rssi, result.max_rssi, result.rx_rssi,
 									  result.rx_snr,
-									  result.min_dst, result.max_dst, result.tx_dr);
+									  result.min_dst, result.max_dst, result.tx_dr, result.lost);
 		}
 		else // LoRa P2P
 		{
@@ -438,7 +437,7 @@ void write_sd_entry(void)
 
 		MYLOG("SD", "Writing:\r\n%s", line_entry);
 		size_t written = log_file.println(line_entry);
-		if (written != bytes_to_write + 2)  // Including /r/n
+		if (written != bytes_to_write + 2) // Including /r/n
 		{
 			MYLOG("SD", "Written: %d expected %d", written, bytes_to_write);
 			// Error writing to file. Card might be full?
@@ -450,6 +449,8 @@ void write_sd_entry(void)
 		}
 		log_file.flush();
 		log_file.close();
+
+		lines_written++;
 	}
 	else
 	{
@@ -459,5 +460,12 @@ void write_sd_entry(void)
 	}
 
 	SD.end();
+
+	if (lines_written == 300)
+	{
+		sd_card_error = create_sd_file();
+		lines_written = 0;
+	}
+
 	return;
 }

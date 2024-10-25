@@ -101,7 +101,6 @@ uint8_t get_min_dr(uint16_t region, uint16_t payload_size);
 bool check_dr(uint16_t packet_len);
 extern uint32_t g_send_repeat_time;
 extern bool lorawan_mode;
-extern bool use_link_check;
 extern volatile bool tx_active;
 extern volatile bool forced_tx;
 extern volatile bool dr_sweep_active;

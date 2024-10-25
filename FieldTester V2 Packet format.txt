@@ -1,0 +1,28 @@
+Downlink packet:
+2 byte PLR
+1 byte Min RSSI 
+	commented out in gateway extension ?????
+1 byte Max RSSI
+1 byte Min Distance
+1 byte Max Distance
+1 byte Num gateways (upper 4 bits) + Seq ID MSB (lower 4 bits)
+	downlinkSeqID = self.tester[devEui]['SeqID']
+    tmpData = gwCnt << 4
+    tmpData = tmpData | (downlinkSeqID >> 8)
+1 byte SeqID LSB
+1 byte Max SNR
+3 byte GW EUI
+
+Uplink packet:
+
+fPort 5 Label frame ???
+5 bytes label 
+1 byte flag
+	flag == 1 ==> label update
+	flag != 1 ==> 
+1 bytes send_count
+
+fPort 1 data
+6 bytes lat & long (0 to 5)
+2 bytes ??? (6,7)
+2 bytes sequence ID (8,9)
