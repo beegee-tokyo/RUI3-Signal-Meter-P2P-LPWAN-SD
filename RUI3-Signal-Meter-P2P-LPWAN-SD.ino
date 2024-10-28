@@ -84,8 +84,9 @@ uint8_t sync_time_status = 0;
 void send_packet(void *data)
 {
 	tx_active = true;
+	ready_to_dump = false;
 
-	if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
+		if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
 	{
 		// Clear payload
 		g_solution_data.reset();
@@ -130,6 +131,7 @@ void send_packet(void *data)
 					{
 						MYLOG("APP", "LoRaWAN send returned error");
 						tx_active = false;
+						ready_to_dump = true;
 					}
 				}
 				else
@@ -161,6 +163,7 @@ void send_packet(void *data)
 						{
 							tx_active = false;
 							MYLOG("GNSS", "LoRaWAN send returned error");
+							ready_to_dump = true;
 						}
 						else
 						{
@@ -303,6 +306,7 @@ void send_packet(void *data)
 					{
 						tx_active = false;
 						MYLOG("APP", "LoRaWAN send returned error");
+						ready_to_dump = true;
 					}
 				}
 				else
@@ -316,6 +320,7 @@ void send_packet(void *data)
 					{
 						tx_active = false;
 						MYLOG("APP", "LoRaWAN send returned error");
+						ready_to_dump = true;
 					}
 				}
 			}
@@ -323,6 +328,7 @@ void send_packet(void *data)
 			{
 				tx_active = false;
 				MYLOG("APP", "Not joined, don't send packet");
+				ready_to_dump = true;
 			}
 		}
 		else

@@ -106,6 +106,7 @@ extern volatile bool forced_tx;
 extern volatile bool dr_sweep_active;
 extern uint8_t sync_time_status;
 extern uint16_t *region_map[];
+extern volatile bool ready_to_dump;
 
 // LoRaWAN stuff
 #include "wisblock_cayenne.h"

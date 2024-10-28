@@ -237,25 +237,54 @@ void clear_sd_file(void)
 	digitalWrite(WB_IO2, HIGH);
 	delay(50);
 
-	SD.begin(WB_SPI_CS);
-	uint16_t file_num = 0;
-	sprintf((char *)file_name, "%04d-log.csv", file_num);
-	while (true)
-	{
-		if (SD.exists((const char *)file_name))
-		{
-			MYLOG("SD", "Delete %s:", file_name);
-			SD.remove((const char *)file_name);
-			file_num++;
-			sprintf((char *)file_name, "%04d-log.csv", file_num);
-			MYLOG("SD", "Next file %s", file_name);
-		}
-		else
-		{
-			break;
-		}
-	}
+	// SD.begin(WB_SPI_CS);
+	// uint16_t file_num = 0;
+	// sprintf((char *)file_name, "%04d-log.csv", file_num);
+	// while (true)
+	// {
+	// 	if (SD.exists((const char *)file_name))
+	// 	{
+	// 		MYLOG("SD", "Delete %s:", file_name);
+	// 		SD.remove((const char *)file_name);
+	// 		file_num++;
+	// 		sprintf((char *)file_name, "%04d-log.csv", file_num);
+	// 		MYLOG("SD", "Next file %s", file_name);
+	// 	}
+	// 	else
+	// 	{
+	// 		break;
+	// 	}
+	// }
 
+	SD.end();
+
+	SD.begin(WB_SPI_CS);
+
+	File dir = SD.open("/", FILE_READ);
+	if (dir)
+	{
+		while (true)
+		{
+			log_file = dir.openNextFile();
+			if (!log_file)
+			{
+				// no more files
+				MYLOG("SD", "No more files");
+				break;
+			}
+			if (!log_file.isDirectory())
+			{
+				char *last_file_name = log_file.name();
+				SD.remove((const char *)last_file_name);
+			}
+			log_file.close();
+		}
+		dir.close();
+	}
+	else
+	{
+		MYLOG("SD", "Can't open root");
+	}
 	SD.end();
 }
 
@@ -290,10 +319,34 @@ bool create_sd_file(void)
 			if (!log_file.isDirectory())
 			{
 				char *last_file_name = log_file.name();
-				last_file_name[4] = 0x00;
-				file_num = atol(last_file_name);
-				sprintf((char *)file_name, "%04d-log.csv", file_num + 1);
-				MYLOG("SD", "Found %s", log_file.name());
+				std::string file_string = last_file_name;
+				if (file_string.find("-LOG.CSV") != string::npos)
+				{
+					bool valid_file = true;
+					for (int idx = 0; idx < 4; idx++)
+					{
+						if ((last_file_name[idx] < '0') || (last_file_name[idx] > '9'))
+						{
+							valid_file = false;
+						}
+					}
+					if (valid_file)
+					{
+						MYLOG("SD", "Found logfile %s", last_file_name);
+						last_file_name[4] = 0x00;
+						file_num = atol(last_file_name);
+						sprintf((char *)file_name, "%04d-LOG.CSV", file_num + 1);
+						MYLOG("SD", "Next file is %s", file_name);
+					}
+					else
+					{
+						MYLOG("SD", "Not a log file %s", last_file_name);
+					}
+				}
+				else
+				{
+					MYLOG("SD", "Not a log file %s", last_file_name);
+				}
 			}
 			log_file.close();
 		}
@@ -466,6 +519,8 @@ void write_sd_entry(void)
 		sd_card_error = create_sd_file();
 		lines_written = 0;
 	}
+
+	ready_to_dump = true;
 
 	return;
 }

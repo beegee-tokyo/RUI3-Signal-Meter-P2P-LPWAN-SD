@@ -38,6 +38,9 @@ custom_param_s g_custom_parameters;
 /** Flag if CRC API needs initialization */
 bool crc_initialized = false;
 
+/** Flag if log dump is possible */
+volatile bool ready_to_dump = true;
+
 // Forward declarations
 int interval_send_handler(SERIAL_PORT port, char *cmd, stParam *param);
 int status_handler(SERIAL_PORT port, char *cmd, stParam *param);
@@ -316,6 +319,7 @@ int dump_logs_handler(SERIAL_PORT port, char *cmd, stParam *param)
 
 	if (param->argc == 1 && !strcmp(param->argv[0], "?"))
 	{
+		g_settings_ui = true;
 		AT_PRINTF("\r\n");
 		api.system.timer.stop(RAK_TIMER_0);
 		api.system.timer.stop(RAK_TIMER_1);
@@ -325,6 +329,17 @@ int dump_logs_handler(SERIAL_PORT port, char *cmd, stParam *param)
 		oled_add_line((char *)"Dumping SD card");
 		oled_add_line((char *)"Do not power off");
 		oled_display();
+
+		time_t start_wait = millis();
+		while (!ready_to_dump)
+		{
+			delay(1000);
+			if ((millis() - start_wait) > 10000)
+			{
+				MYLOG("ATC", "Timeout waiting for TX finished");
+				return AT_BUSY_ERROR;
+			}
+		}
 		dump_all_sd_files();
 		AT_PRINTF("\r\n");
 		// reboot
@@ -341,6 +356,17 @@ int dump_logs_handler(SERIAL_PORT port, char *cmd, stParam *param)
 		oled_add_line((char *)"Erasing SD card");
 		oled_add_line((char *)"Do not power off");
 		oled_display();
+
+		time_t start_wait = millis();
+		while (!ready_to_dump)
+		{
+			delay(1000);
+			if ((millis() - start_wait) > 20000)
+			{
+				MYLOG("ATC", "Timeout waiting for TX finished");
+				return AT_BUSY_ERROR;
+			}
+		}
 
 		clear_sd_file();
 
