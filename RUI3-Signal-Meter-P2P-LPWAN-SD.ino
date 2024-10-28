@@ -1186,16 +1186,6 @@ void setup(void)
 	sprintf(line_str, "RUI3_Tester_V%d.%d.%d", SW_VERSION_0, SW_VERSION_1, SW_VERSION_2);
 	api.system.firmwareVersion.set(line_str);
 
-	// // Check if OLED is available
-	// Wire.begin();
-	// has_oled = init_oled();
-	// if (has_oled)
-	// {
-	// 	oled_clear();
-	// 	sprintf(line_str, "RAK Signal Meter");
-	// 	oled_write_header(line_str);
-	// }
-
 	digitalWrite(LED_GREEN, HIGH);
 
 	digitalWrite(LED_GREEN, LOW);
