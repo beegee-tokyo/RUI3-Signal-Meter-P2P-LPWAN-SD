@@ -187,7 +187,7 @@ void dump_all_sd_files(void)
 
 			file_num++;
 			sprintf((char *)file_name, "%04d-log.csv", file_num);
-			MYLOG("SD", "Next file %s", file_name);
+			MYLOG("SD", "Look for next file %s", file_name);
 		}
 		else
 		{
