@@ -31,15 +31,15 @@ Requires the following Arduino libraries.
 - [Setup with AT commands](#setup-with-at-commands)
   - [LoRa P2P](#lora-p2p-setup)
   - [LoRaWAN LinkCheck](#lorawan-linkcheck-setup)
-  - [LoRaWAN Field Tester (requires backend server)](#lorawan-field-tester-setup)
+  - [LoRaWAN FieldTester (requires backend server)](#lorawan-field-tester-setup)
 - [Usage](#usage)
   - [LoRa P2P](#lora-p2p)
   - [LoRaWAN LinkCheck](#lorawan-linkcheck)
-  - [LoRaWAN Field Tester (requires backend server)](#lorawan-field-tester)
+  - [LoRaWAN FieldTester (requires backend server)](#lorawan-field-tester)
 - [Log files (If SD card is present)](#log-files-if-sd-card-is-present)
   - [AT command for log files](#at-commands-for-log-files)
   - [Linkcheck mode log format](#linkcheck-mode-log-format)
-  - [Field Tester mode log format](#field-tester-mode-log-format)
+  - [FieldTester mode log format](#field-tester-mode-log-format)
   - [P2P mode log format](#p2p-mode-log-format)
 - [Enclosure](#enclosure)
 - [Firmware](#firmware)
@@ -57,7 +57,7 @@ The difference to the "other" _**Simple RUI3 based Signal Meter**_ is that this 
 
 #### ⚠️ INFO ⚠️        
 One of the advantages of this simple tester is that it does not require any backend installations on the LoRaWAN server (like Helium, TTN and Chirpstack) if used in LinkCheck Packet mode, but should work with any LoRaWAN server like AWS or Actility.     
-Only the Field Tester Mode requires a backend server.    
+Only the FieldTester Mode requires a backend server.    
 
 ## LoRa P2P mode
 If used in LoRa P2P, it is listening on the selected LoRa P2P settings and sending packets on the same settings:
@@ -85,7 +85,7 @@ Extract from the _**LoRaWAN 1.0.3 Specification**_:
 <center><img src="./assets/lorawan-linkcheck.png" alt="LinkCheck"></center>
 
 ### LoRaWAN FieldTester test mode    
-In addition, it supports the RAK10701 Field Tester protocol. The advantage of the Field Tester protocol is that it provides more information about the test, including distances to the gateways. The disadvantage is that this protocol requires a backend server to process the information and send it back to the device.
+In addition, it supports the RAK10701 FieldTester protocol. The advantage of the FieldTester protocol is that it provides more information about the test, including distances to the gateways. The disadvantage is that this protocol requires a backend server to process the information and send it back to the device.
 
 # Typical test scenarios
 In all scenarios, tests can be performed in two ways:
@@ -113,7 +113,7 @@ This is a very basic test that only shows whether the device is in range of anot
 # Custom AT commands     
 This examples includes multiple custom AT commands:     
 - **`ATC+SENDINT`** to set the send interval time or heart beat time. The device will send a payload with this interval. The time is set in seconds, e.g. **`AT+SENDINT=600`** sets the send interval to 600 seconds or 10 minutes.    
-- **`ATC+MODE`** to set the test mode. 0 using LPWAN LinkCheck, 1 using LoRa P2P, 2 using Field Tester protocol.
+- **`ATC+MODE`** to set the test mode. 0 using LPWAN LinkCheck, 1 using LoRa P2P, 2 using FieldTester protocol.
 - **`ATC+STATUS`** to get some status information from the device.    
 - **`ATC+PCKG`** to setup a custom payload that is used in the uplink packets.
 - **`ATC+LOGS`** to retrieve or erase saved log files from the SD card (if SD card is present). See [AT command for log files](#at-commands-for-log-files)
@@ -182,7 +182,7 @@ Overview of all settings levels and button functions:
 | | Device Settings <br><img src="./assets/ui-dev-setting-top.png"> | | General settings<br> Location and Display Saver are on/off toggle items<br><br>- Location on works only in FieldTester Mode and keeps the GNSS module powered up for faster location acquisition (faster battery drain)<br><br>- Display Saver on switches off the display after 1 minute. The display can be turned on with a single button click. |
 | | | Send Interval <br><img src="./assets/ui-dev-setting-interval.png"> | Change send interval in 10 second steps<br>(2) 10 seconds more<br>(3) 10 seconds less |
 | | Mode <br><img src="./assets/ui-mode-top.png"> | | Exclusive selection of one mode by number of clicks |
-| | LoRa Settings (LoRaWAN test modes) <br><img src="./assets/ui-lorawan-top.png"> | | UI depends on selected test mode.<br> In LinkCheck, Confirmed Packet and Field Tester Mode, it shows LoRaWAN specific settings. |
+| | LoRa Settings (LoRaWAN test modes) <br><img src="./assets/ui-lorawan-top.png"> | | UI depends on selected test mode.<br> In LinkCheck, Confirmed Packet and FieldTester Mode, it shows LoRaWAN specific settings. |
 | | | ADR on/off<br><img src="./assets/ui-lorawan-adr.png"> | Switch ADR on or off |
 | | | DR selection<br><img src="./assets/ui-lorawan-dr.png"> | Change DR setting<br> (2) next higher DR<br>(3) next lower DR |
 | | | TX Power selection<br><img src="./assets/ui-lorawan-tx.png"> | Change TX power setting<br> (2) next higher TX power<br>(3) next lower TX power |
@@ -271,7 +271,7 @@ In this case double check all settings on the device and LoRaWAN server and chec
 
 ----
 
-## LoRaWAN Field Tester Setup
+## LoRaWAN FieldTester Setup
 
 To use the device in LoRaWAN mode it has to be set into this mode with     
 ```at
@@ -293,14 +293,14 @@ ATZ
 ```
 
 #### ⚠️ TIP ⚠️ 
-If the credentials were set already (they are saved in the flash of the device), the switch to Field Tester testing can as well be done with
+If the credentials were set already (they are saved in the flash of the device), the switch to FieldTester testing can as well be done with
 ```at
 ATC+MODE=3
 ```
 The device might reboot after this command, if it was not already in LoRaWAN mode.    
 
 #### ⚠️ IMPORTANT ⚠️        
-In Field Tester Mode a backend server has to be setup as integration in the LoRaWAN server. Without this backend server, the Field Tester Mode does not work.    
+In FieldTester Mode a backend server has to be setup as integration in the LoRaWAN server. Without this backend server, the FieldTester Mode does not work.    
 More information about available backend solutions can be found in the [RAK10701 documentation](https://docs.rakwireless.com/Product-Categories/WisNode/RAK10701-P/Quickstart/#lorawan-network-servers-guide-for-rak10701-p-field-tester-pro)
 
 #### ⚠️ IMPORTANT ⚠️        
@@ -319,7 +319,7 @@ In this case double check all settings on the device and LoRaWAN server and chec
 The principle usage for all modes is similar. After selecting the mode and setting the correct parameters and credentials, the device will send uplink packets in the selected send interval.    
 
 #### ⚠️ IMPORTANT ⚠️        
-When using Field Tester Mode, the device requires to have a valid location fix from it's builtin GNSS module. Otherwise it will not send any uplink packets.    
+When using FieldTester Mode, the device requires to have a valid location fix from it's builtin GNSS module. Otherwise it will not send any uplink packets.    
 
 ## LoRa P2P
 
@@ -357,7 +357,7 @@ If the device is out of the range of gateways (after it had joined before), it w
 
 ----
 
-## LoRaWAN Field Tester
+## LoRaWAN FieldTester
 
 After the device has joined the network, it will send confirmed packets with location information to the LoRaWAN server. The LoRaWAN server will forward this information together with gateway information to the backend server. The backend server will create and send a downlink packet to the tester. The display will show
 - RSSI and SNR level of the received downlink packet
@@ -381,7 +381,7 @@ If no location fix can be acquired, an error will be displayed and no packet wil
 <center><img src="./assets/fieldtester-no-location.png" alt="Fieldtester location failure"></center>
 
 #### ⚠️ IMPORTANT ⚠️        
-In Field Tester Mode a backend server has to be setup as integration in the LoRaWAN server. Without this backend server, the Field Tester Mode does not work.    
+In FieldTester Mode a backend server has to be setup as integration in the LoRaWAN server. Without this backend server, the FieldTester Mode does not work.    
 More information about available backend solutions can be found in the [RAK10701 documentation](https://docs.rakwireless.com/Product-Categories/WisNode/RAK10701-P/Quickstart/#lorawan-network-servers-guide-for-rak10701-p-field-tester-pro)
 
 [Back to top](#content)
@@ -420,15 +420,15 @@ time;Mode;Gw;RX RSSI;RX SNR;Demod;TX DR;Lost
 
 ----
 
-## Field Tester mode log format
+## FieldTester mode log format
 
-When in Field Tester mode for LoRaWAN, the log file has the following format:    
+When in FieldTester mode for LoRaWAN, the log file has the following format:    
 
 time;Mode;Gw;Lat;Lng;min RSSI;max RSSI;RX RSSI;RX SNR;min Dist;max Dist; TX DR
 
 | time | Mode | Gw | Lat | Lng | min RSSI | max RSSI | RX RSSI | RX SNR | min Dist | max Dist | TX DR |
 | ---  | ---  | --- | --- | --- | ---     | ---      | ---     | ---    | ---      | ---      | ---   |
-| Time stamp (available if LNS has provided the time or if a RTC module is attached) | 2 for Field Tester mode | Number of gateways | Latitude (can be 0.0 if no location fix, e.g. indoor testing) | Longitude (can be 0.0 if no location fix, e.g. indoor testing) | min RSSI seen by gateways | max RSSI seen by gateways | RSSI of downlink | SNR of downlink | min distance to gateway(s) | max distance to gateway(s) | TX datarate |
+| Time stamp (available if LNS has provided the time or if a RTC module is attached) | 2 for FieldTester mode | Number of gateways | Latitude (can be 0.0 if no location fix, e.g. indoor testing) | Longitude (can be 0.0 if no location fix, e.g. indoor testing) | min RSSI seen by gateways | max RSSI seen by gateways | RSSI of downlink | SNR of downlink | min distance to gateway(s) | max distance to gateway(s) | TX datarate |
 | 2024-10-07 14:39:00 | 2 | 1 | 14.521355 | 121.106880 | -50 | -50 | -59 | 7 | 250 | 250      | 5 |
 
 ----
@@ -583,7 +583,7 @@ The display handler callback includes a flag that tells what kind of display con
  *               3 = Join failed (only LPW mode)
  *               4 = Linkcheck result display (only LPW LinkCheck mode)
  *               5 = Join success (only LPW mode)
- *               6 = Field Tester downlink packet
+ *               6 = FieldTester downlink packet
  */
 void handle_display(void *reason)
 {}

@@ -35,6 +35,7 @@ public:
 	uint8_t addGNSS_6(uint8_t channel, int32_t latitude, int32_t longitude, int32_t altitude);
 	uint8_t addGNSS_H(int32_t latitude, int32_t longitude, int16_t altitude, uint16_t accuracy, uint16_t battery);
 	uint8_t addGNSS_T(int32_t latitude, int32_t longitude, int16_t altitude, float accuracy, int8_t sats);
+	uint8_t addGNSS_T2(int32_t latitude, int32_t longitude, int16_t sequence_id);
 	uint8_t addVoc_index(uint8_t channel, uint32_t voc_index);
 
 private:

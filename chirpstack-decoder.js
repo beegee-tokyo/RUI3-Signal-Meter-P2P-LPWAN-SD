@@ -1,8 +1,8 @@
-// Decode Field Tester Payload and LinkCheck payload.
+// Decode FieldTester Payload and LinkCheck payload.
 //  - fPort contains the LoRaWAN fPort number
 //  - bytes is an array of bytes, e.g. [225, 230, 255, 0]
 // Decoding function depends on fPort
-//  - fPort == 1 ==> Decode Field Tester payload
+//  - fPort == 1 ==> Decode FieldTester payload
 //  - fPort == 2 ==> Decode Linkcheck payload (returns an ASCII string of the payload)
 // The function must return an object, e.g. {"temperature": 22.5}
 function Decode(fPort, bytes, variables) {

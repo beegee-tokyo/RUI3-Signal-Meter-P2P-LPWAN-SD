@@ -10,7 +10,7 @@
  */
 #include "app.h"
 // CRC algo
-#include "app_crc.h"
+#include <utilities.h>
 
 #if defined(_VARIANT_RAK3172_) || defined(_VARIANT_RAK3172_SIP_)
 #define AT_PRINTF(...)              \
@@ -34,6 +34,7 @@
 
 /** Custom flash parameters */
 custom_param_s g_custom_parameters;
+custom_param_s temp_params;
 
 /** Flag if CRC API needs initialization */
 bool crc_initialized = false;
@@ -48,6 +49,7 @@ int test_mode_handler(SERIAL_PORT port, char *cmd, stParam *param);
 int custom_pckg_handler(SERIAL_PORT port, char *cmd, stParam *param);
 int dump_logs_handler(SERIAL_PORT port, char *cmd, stParam *param);
 int rtc_command_handler(SERIAL_PORT port, char *cmd, stParam *param);
+int app_ver_handler(SERIAL_PORT port, char *cmd, stParam *param);
 
 /**
  * @brief Add send interval AT command
@@ -58,7 +60,7 @@ int rtc_command_handler(SERIAL_PORT port, char *cmd, stParam *param);
 bool init_interval_at(void)
 {
 	return api.system.atMode.add((char *)"SENDINT",
-								 (char *)"Set/Get the interval sending time values in seconds 0 = off, max 3600 seconds (1 hour)",
+								 (char *)"Set/Get the interval sending time values in seconds 0 = off, max 7200 seconds (2 hours)",
 								 (char *)"SENDINT", interval_send_handler,
 								 RAK_ATCMD_PERM_WRITE | RAK_ATCMD_PERM_READ);
 }
@@ -95,7 +97,7 @@ int interval_send_handler(SERIAL_PORT port, char *cmd, stParam *param)
 
 		MYLOG("AT_CMD", "Requested interval %ld", new_send_freq);
 
-		if (new_send_freq >= 3601L)
+		if (new_send_freq >= 7201L)
 		{
 			return AT_PARAM_ERROR;
 		}
@@ -110,6 +112,7 @@ int interval_send_handler(SERIAL_PORT port, char *cmd, stParam *param)
 			// Restart the timer
 			api.system.timer.start(RAK_TIMER_0, g_custom_parameters.send_interval, NULL);
 		}
+		MYLOG("AT_CMD", "Timer restarted with %ld", g_custom_parameters.send_interval);
 		// Save custom settings
 		save_at_setting();
 	}
@@ -130,7 +133,7 @@ int interval_send_handler(SERIAL_PORT port, char *cmd, stParam *param)
 bool init_test_mode_at(void)
 {
 	return api.system.atMode.add((char *)"MODE",
-								 (char *)"Set/Get the test mode. 0 = LPWAN LinkCheck, 1 = LoRa P2P, 2 = Field Tester",
+								 (char *)"Set/Get the test mode. 0 = LPWAN LinkCheck, 1 = LoRa P2P, 2 = FieldTester, 3 = FieldTester V2",
 								 (char *)"MODE", test_mode_handler,
 								 RAK_ATCMD_PERM_WRITE | RAK_ATCMD_PERM_READ);
 }
@@ -168,20 +171,13 @@ int test_mode_handler(SERIAL_PORT port, char *cmd, stParam *param)
 
 		MYLOG("AT_CMD", "Requested mode %ld", new_mode);
 
-		if (new_mode > 2)
+		if (new_mode >= INVALID_MODE)
 		{
 			return AT_PARAM_ERROR;
 		}
 
 		if (new_mode != old_mode)
 		{
-			bool restart = true;
-			if (((old_mode == 0) && (new_mode == 1)) || ((old_mode == 1) && (new_mode == 0)))
-			{
-				MYLOG("AT_CMD", "Switch within LPWAN modes");
-				restart = false;
-			}
-
 			g_custom_parameters.test_mode = new_mode;
 			MYLOG("AT_CMD", "New test mode %ld", g_custom_parameters.test_mode);
 
@@ -198,17 +194,15 @@ int test_mode_handler(SERIAL_PORT port, char *cmd, stParam *param)
 				set_p2p();
 				break;
 			case MODE_FIELDTESTER:
+			case MODE_FIELDTESTER_V2:
 				set_field_tester();
 				break;
 			}
 
-			// If switching between LoRaWAN and LoRa P2P the device needs to restart
-			if (restart)
-			{
-				AT_PRINTF("+EVT:RESTART_FOR_MODE_CHANGE");
-				delay(5000);
-				api.system.reboot();
-			}
+			// On mode change, always restart to refresh log file appearance
+			AT_PRINTF("+EVT:RESTART_FOR_MODE_CHANGE");
+			delay(5000);
+			api.system.reboot();
 		}
 	}
 	else
@@ -522,7 +516,7 @@ char *g_regions_list[] = {"EU433", "CN470", "RU864", "IN865", "EU868", "US915", 
 /** Network modes as text array*/
 char *nwm_list[] = {"P2P", "LoRaWAN", "FSK"};
 /** Available test modes as text array */
-char *test_mode_list[] = {"LinkCheck", "LoRa P2P", "Field Tester"};
+char *test_mode_list[] = {"LinkCheck", "LoRa P2P", "FieldTester"};
 /**
  * @brief Print device status over Serial
  *
@@ -629,17 +623,46 @@ int status_handler(SERIAL_PORT port, char *cmd, stParam *param)
 }
 
 /**
+ * @brief Add send interval AT command
+ *
+ * @return true if success
+ * @return false if failed
+ */
+bool init_app_ver_at(void)
+{
+	return api.system.atMode.add((char *)"APPVER",
+								 (char *)"Get application version",
+								 (char *)"APPVER", app_ver_handler,
+								 RAK_ATCMD_PERM_READ);
+}
+
+/**
+ * @brief Handler for send interval AT command
+ *
+ * @param port Serial port used
+ * @param cmd char array with the received AT command
+ * @param param char array with the received AT command parameters
+ * @return int result of command parsing
+ * 			AT_OK AT command & parameters valid
+ * 			AT_PARAM_ERROR command or parameters invalid
+ */
+int app_ver_handler(SERIAL_PORT port, char *cmd, stParam *param)
+{
+	if (param->argc == 1 && !strcmp(param->argv[0], "?"))
+	{
+		AT_PRINTF("%s=RUI3_Tester_V%d.%d.%d", cmd, SW_VERSION_0, SW_VERSION_1, SW_VERSION_2);
+		return AT_OK;
+	}
+	return AT_ERROR;
+}
+
+/**
  * @brief Get setting from flash
  *
  * @return false read from flash failed or invalid settings type
  */
 bool get_at_setting(void)
 {
-	if (!crc_initialized)
-	{
-		crcInit();
-		crc_initialized = true;
-	}
 	bool found_problem = false;
 
 	MYLOG("AT_CMD", "Size of custom parameters %d", sizeof(custom_param_s));
@@ -660,30 +683,29 @@ bool get_at_setting(void)
 	// 	MYLOG("AT_CMD", "Erased custom parameters from Flash");
 	// }
 
-	custom_param_s temp_params;
 	uint8_t *flash_value = (uint8_t *)&temp_params.settings_crc;
 	if (!api.system.flash.get(0, flash_value, sizeof(custom_param_s)))
 	{
 		MYLOG("AT_CMD", "Failed to read custom parameters from Flash");
 		return false;
 	}
-	MYLOG("AT_CMD", "Got CRC: %04X", temp_params.settings_crc);
+	MYLOG("AT_CMD", "Got CRC: %08X", temp_params.settings_crc);
 
-	uint16_t crc_expected = 0x0000;
+	uint32_t crc_expected = 0x00;
 	// Check validity flag
 	if (temp_params.valid_flag == 0xaa)
 	{
 		// Check CRC
-		unsigned char *message = (unsigned char *)temp_params.send_interval;
-		crc_expected = crcFast(message, custom_params_len);
+		MYLOG("AT_CMD", "Create CRC");
+		uint8_t *p_data = (uint8_t *)&temp_params.send_interval;
+		crc_expected = Crc32(p_data, custom_params_len - (sizeof(uint32_t)));
+		MYLOG("AT_CMD", "Calculated CRC %08X", crc_expected);
 	}
 
 	if (temp_params.settings_crc != crc_expected)
 	{
-		MYLOG("AT_CMD", "CRC error, expected %04X, got %04X", crc_expected, temp_params.settings_crc);
+		MYLOG("AT_CMD", "CRC error, expected %08X, got %08X", crc_expected, temp_params.settings_crc);
 
-		// if (flash_value[0] != 0xAA)
-		// {
 		// MYLOG("AT_CMD", "No valid settings found, set to default, read 0X%08X", temp_params.send_interval);
 		g_custom_parameters.valid_flag = 0xaa;
 		g_custom_parameters.send_interval = 30000;
@@ -700,11 +722,11 @@ bool get_at_setting(void)
 	}
 	g_custom_parameters.send_interval = temp_params.send_interval;
 
-	if (temp_params.test_mode > 2)
+	if (temp_params.test_mode >= INVALID_MODE)
 	{
 		MYLOG("AT_CMD", "Invalid test mode found %d", temp_params.test_mode);
 		g_custom_parameters.test_mode = 0;
-		save_at_setting();
+		found_problem = true;
 	}
 	else
 	{
@@ -715,7 +737,7 @@ bool get_at_setting(void)
 	{
 		MYLOG("AT_CMD", "Invalid display mode found %d", temp_params.display_saver);
 		g_custom_parameters.display_saver = false;
-		save_at_setting();
+		found_problem = true;
 	}
 	else
 	{
@@ -726,7 +748,7 @@ bool get_at_setting(void)
 	{
 		MYLOG("AT_CMD", "Invalid location mode found %d", temp_params.location_on);
 		g_custom_parameters.location_on = false;
-		save_at_setting();
+		found_problem = true;
 	}
 	else
 	{
@@ -738,6 +760,7 @@ bool get_at_setting(void)
 		MYLOG("AT_CMD", "Invalid packet_len found %d", temp_params.custom_packet_len);
 		g_custom_parameters.custom_packet[0] = 0x00;
 		g_custom_parameters.custom_packet_len = 0;
+		found_problem = true;
 	}
 	else
 	{
@@ -745,6 +768,10 @@ bool get_at_setting(void)
 		memcpy(g_custom_parameters.custom_packet, temp_params.custom_packet, g_custom_parameters.custom_packet_len);
 	}
 
+	if (found_problem)
+	{
+		save_at_setting();
+	}
 	MYLOG("AT_CMD", "Send interval found %ld", g_custom_parameters.send_interval);
 	MYLOG("AT_CMD", "Test mode found %d", g_custom_parameters.test_mode);
 	MYLOG("AT_CMD", "Display mode found %s", g_custom_parameters.display_saver ? "On" : "Off");
@@ -768,21 +795,22 @@ bool get_at_setting(void)
  */
 bool save_at_setting(void)
 {
-	// Check CRC
-	unsigned char *message = (unsigned char *)g_custom_parameters.send_interval;
-	uint16_t crc_calculated = crcFast(message, custom_params_len);
+	MYLOG("AT_CMD", "Create CRC");
+	// Create CRC
+	memcpy(&temp_params.send_interval, &g_custom_parameters.send_interval, custom_params_len - (sizeof(uint32_t)));
+	uint8_t *p_data = (uint8_t *)&temp_params.send_interval;
+	uint32_t crc_calculated = Crc32(p_data, custom_params_len - (sizeof(uint32_t)));
 	MYLOG("AT_CMD", "Calculated CRC %04X", crc_calculated);
 
-	custom_param_s temp_params;
 	uint8_t *flash_value = (uint8_t *)&temp_params.settings_crc;
 	temp_params.settings_crc = crc_calculated;
-	temp_params.send_interval = g_custom_parameters.send_interval;
-	temp_params.valid_flag = g_custom_parameters.valid_flag;
-	temp_params.test_mode = g_custom_parameters.test_mode;
-	temp_params.display_saver = g_custom_parameters.display_saver;
-	temp_params.location_on = g_custom_parameters.location_on;
-	memcpy(temp_params.custom_packet, g_custom_parameters.custom_packet, g_custom_parameters.custom_packet_len);
-	temp_params.custom_packet_len = g_custom_parameters.custom_packet_len;
+	// temp_params.send_interval = g_custom_parameters.send_interval;
+	// temp_params.valid_flag = g_custom_parameters.valid_flag;
+	// temp_params.test_mode = g_custom_parameters.test_mode;
+	// temp_params.display_saver = g_custom_parameters.display_saver;
+	// temp_params.location_on = g_custom_parameters.location_on;
+	// memcpy(temp_params.custom_packet, g_custom_parameters.custom_packet, g_custom_parameters.custom_packet_len);
+	// temp_params.custom_packet_len = g_custom_parameters.custom_packet_len;
 
 	bool wr_result = false;
 	MYLOG("AT_CMD", "Writing send interval 0X%08X ", temp_params.send_interval);

@@ -56,12 +56,12 @@
 #ifndef SW_VERSION_0
 #define SW_VERSION_0 2
 #define SW_VERSION_1 0
-#define SW_VERSION_2 3
+#define SW_VERSION_2 4
 #endif
 /** Custom flash parameters structure */
 struct custom_param_s
 {
-	uint16_t settings_crc = 0;
+	uint32_t settings_crc = 0;
 	uint32_t send_interval = 30000;
 	uint8_t valid_flag = 0xAA;
 	uint8_t test_mode = 0;
@@ -78,7 +78,9 @@ typedef enum test_mode_num
 {
 	MODE_LINKCHECK = 0,
 	MODE_P2P = 1,
-	MODE_FIELDTESTER = 2
+	MODE_FIELDTESTER = 2,
+	MODE_FIELDTESTER_V2 = 3,
+	INVALID_MODE = 4
 } test_mode_num_t;
 
 /** Custom flash parameters */
@@ -91,6 +93,7 @@ bool init_test_mode_at(void);
 bool init_custom_pckg_at(void);
 bool init_dump_logs_at(void);
 bool init_rtc_at(void);
+bool init_app_ver_at(void);
 bool get_at_setting(void);
 bool save_at_setting(void);
 void set_linkcheck(void);
@@ -107,6 +110,7 @@ extern volatile bool dr_sweep_active;
 extern uint8_t sync_time_status;
 extern uint16_t *region_map[];
 extern volatile bool ready_to_dump;
+extern volatile int32_t packet_num;
 
 // LoRaWAN stuff
 #include "wisblock_cayenne.h"
@@ -207,7 +211,7 @@ extern volatile uint8_t g_last_satellites;
 extern volatile bool has_gnss_location;
 
 // SD Card
-/** Custom flash parameters structure */
+/** Log file info structure */
 struct result_s
 {
 	uint16_t year = 24;
@@ -222,6 +226,7 @@ struct result_s
 	float lng = 121.006819;
 	int8_t min_rssi = 0;
 	int8_t max_rssi = 0;
+	int8_t max_snr = 0;
 	int8_t rx_rssi = 0;
 	int8_t rx_snr = 0;
 	int16_t min_dst = 0;

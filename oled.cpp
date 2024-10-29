@@ -299,7 +299,10 @@ void display_show_menu(char *menu[], uint8_t menu_len, uint8_t sel_menu, uint8_t
 			oled_write_line(1, 0, (char *)"P2P Mode");
 			break;
 		case MODE_FIELDTESTER:
-			oled_write_line(1, 0, (char *)"Field Tester mode");
+			oled_write_line(1, 0, (char *)"FieldTester mode");
+			break;
+		case MODE_FIELDTESTER_V2:
+			oled_write_line(1, 0, (char *)"FieldTester V2 mode");
 			break;
 		}
 		sprintf(line_str, "Sent interval %ds", g_last_settings.send_interval / 1000);

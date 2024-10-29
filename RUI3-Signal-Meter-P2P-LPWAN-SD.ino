@@ -29,7 +29,7 @@ volatile uint8_t last_dr = 0;
 /** TX fail reason (only LPW mode)*/
 volatile int32_t tx_fail_status;
 
-/** TX active flag (used for manual sending in Field Tester Mode and P2P mode) */
+/** TX active flag (used for manual sending in FieldTester Mode and P2P mode) */
 volatile bool tx_active = false;
 /** Flag if TX is manually triggered */
 volatile bool forced_tx = false;
@@ -49,10 +49,10 @@ uint8_t display_reason;
 /** Task Manager for button press */
 MillisTaskManager mtmMain;
 
-/** LoRaWAN packet (used for Field Tester Mode only) */
+/** LoRaWAN packet (used for FieldTester Mode only) */
 WisCayenne g_solution_data(255);
 
-/** Buffer for Field Tester downlink */
+/** Buffer for FieldTester downlink */
 uint8_t field_tester_pckg[32];
 
 /** Flag for GNSS readings active */
@@ -86,7 +86,7 @@ void send_packet(void *data)
 	tx_active = true;
 	ready_to_dump = false;
 
-		if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
+	if ((g_custom_parameters.test_mode == MODE_FIELDTESTER) || (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2))
 	{
 		// Clear payload
 		g_solution_data.reset();
@@ -98,7 +98,14 @@ void send_packet(void *data)
 				if (has_oled && !g_settings_ui)
 				{
 					oled_clear();
-					oled_write_header((char *)"RAK Field Tester");
+					if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
+					{
+						oled_write_header((char *)"RAK FieldTester");
+					}
+					else
+					{
+						oled_write_header((char *)"RAK FieldTester V2");
+					}
 					oled_add_line((char *)"Start location acquisition");
 				}
 
@@ -145,7 +152,15 @@ void send_packet(void *data)
 							oled_add_line(line_str);
 						}
 						// If forced TX, send whether we have location or not 143050416, 1206306357
-						g_solution_data.addGNSS_T(0, 0, 0, 1, 0);
+						if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
+						{
+							g_solution_data.addGNSS_T2(0, 0, (int16_t)packet_num);
+						}
+						else
+						{
+							g_solution_data.addGNSS_T(0, 0, 0, 1, 0);
+						}
+
 						// Get gateway time
 						if (sync_time_status == 0)
 						{
@@ -192,7 +207,7 @@ void send_packet(void *data)
 				if (has_oled && !g_settings_ui)
 				{
 					oled_clear();
-					oled_write_header((char *)"RAK Field Tester");
+					oled_write_header((char *)"RAK FieldTester");
 					oled_add_line((char *)"Acquisition ongoing");
 				}
 
@@ -204,11 +219,18 @@ void send_packet(void *data)
 			if (has_oled && !g_settings_ui)
 			{
 				oled_clear();
-				oled_write_header((char *)"RAK Field Tester");
+				oled_write_header((char *)"RAK FieldTester");
 				oled_add_line((char *)"Indoor test");
 			}
 			// Location is switched off, send indoor test packet
-			g_solution_data.addGNSS_T(0, 0, 0, 1.0, 0);
+			if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
+			{
+				g_solution_data.addGNSS_T2(0, 0, (int16_t)packet_num);
+			}
+			else
+			{
+				g_solution_data.addGNSS_T(0, 0, 0, 1.0, 0);
+			}
 
 			// Get gateway time
 			if (sync_time_status == 0)
@@ -352,8 +374,8 @@ void send_packet(void *data)
  *               3 = Join failed (only LPW mode)
  *               4 = Linkcheck result display (only LPW LinkCheck mode)
  *               5 = Join success (only LPW mode)
- *               6 = Field Tester downlink packet (only FieldTester mode )
- *               7 = Field Tester no downlink packet (only FieldTester mode )
+ *               6 = FieldTester downlink packet (only FieldTester mode )
+ *               7 = FieldTester no downlink packet (only FieldTester mode )
  *               8 = P2P TX finished (only P2P mode)
  */
 void handle_display(void *reason)
@@ -366,7 +388,11 @@ void handle_display(void *reason)
 		oled_clear();
 		if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
 		{
-			sprintf(line_str, "RAK Field Tester");
+			sprintf(line_str, "RAK FieldTester");
+		}
+		else if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
+		{
+			sprintf(line_str, "RAK FieldTester V2");
 		}
 		else
 		{
@@ -591,10 +617,13 @@ void handle_display(void *reason)
 				oled_write_line(0, 0, (char *)"LinkCheck mode");
 				break;
 			case MODE_FIELDTESTER:
-				oled_write_line(0, 0, (char *)"Field Tester mode");
+				oled_write_line(0, 0, (char *)"FieldTester mode");
+				break;
+			case MODE_FIELDTESTER_V2:
+				oled_write_line(0, 0, (char *)"FieldTester V2 mode");
 				break;
 			}
-			sprintf(line_str, "Test interval %lds", g_custom_parameters.send_interval / 1000);
+			sprintf(line_str, "Test interval  %lds", g_custom_parameters.send_interval / 1000);
 			oled_write_line(1, 0, line_str);
 			oled_write_line(2, 0, (char *)" ");
 			sprintf(line_str, "Join failed");
@@ -745,10 +774,13 @@ void handle_display(void *reason)
 				oled_write_line(0, 0, (char *)"LinkCheck mode");
 				break;
 			case MODE_FIELDTESTER:
-				oled_write_line(0, 0, (char *)"Field Tester mode");
+				oled_write_line(0, 0, (char *)"FieldTester mode");
+				break;
+			case MODE_FIELDTESTER_V2:
+				oled_write_line(0, 0, (char *)"FieldTester V2 mode");
 				break;
 			}
-			sprintf(line_str, "Test interval %lds", g_custom_parameters.send_interval / 1000);
+			sprintf(line_str, "Test interval  %lds", g_custom_parameters.send_interval / 1000);
 			oled_write_line(1, 0, line_str);
 			oled_write_line(2, 0, (char *)" ");
 			sprintf(line_str, "Device joined network");
@@ -757,88 +789,174 @@ void handle_display(void *reason)
 			oled_display();
 		}
 	}
-	else if (display_reason == 6) // Field Tester downlink packet (only FieldTester mode )
+	else if (display_reason == 6) // FieldTester downlink packet (only FieldTester mode )
 	{
-		int16_t min_rssi = field_tester_pckg[1] - 200;
-		int16_t max_rssi = field_tester_pckg[2] - 200;
-		int16_t min_distance = field_tester_pckg[3] * 250;
-		int16_t max_distance = field_tester_pckg[4] * 250;
-		int8_t num_gateways = field_tester_pckg[5];
-		MYLOG("APP", "+EVT:FieldTester %d gateways", num_gateways);
-		MYLOG("APP", "+EVT:RSSI min %d max %d", min_rssi, max_rssi);
-		MYLOG("APP", "+EVT:Distance min %d max %d", min_distance, max_distance);
-
-		if (has_sd)
+		if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
 		{
-			if (has_rtc)
+			uint16_t plr = ((uint16_t)field_tester_pckg[0] << 8) + (uint16_t)field_tester_pckg[1];
+			int8_t max_rssi = field_tester_pckg[2] - 200;
+			int16_t min_distance = field_tester_pckg[3] * 250;
+			int16_t max_distance = field_tester_pckg[4] * 250;
+			int8_t num_gateways = field_tester_pckg[5] >> 4;
+			int16_t seq_id = (int16_t)field_tester_pckg[5] & 0x0F + (int16_t)field_tester_pckg[6];
+			int8_t max_snr = field_tester_pckg[7];
+			uint8_t gw_eui[8] = {0xac, 0x1f, 0x09, 0xff, 0xfe, 0x00, 0x00, 0x00};
+			gw_eui[5] = field_tester_pckg[8];
+			gw_eui[6] = field_tester_pckg[9];
+			gw_eui[7] = field_tester_pckg[10];
+			MYLOG("APP", "+EVT:FieldTester V2 %d gateways", num_gateways);
+			MYLOG("APP", "+EVT:RSSI max %d, SNR max %d", max_rssi, max_snr);
+			MYLOG("APP", "+EVT:Distance min %d max %d", min_distance, max_distance);
+			if (has_sd)
 			{
-				read_rak12002();
+				if (has_rtc)
+				{
+					read_rak12002();
+				}
+				else
+				{
+					get_mcu_time();
+				}
+				result.year = g_date_time.year;
+				result.month = g_date_time.month;
+				result.day = g_date_time.date;
+				result.hour = g_date_time.hour;
+				result.min = g_date_time.minute;
+				result.sec = g_date_time.second;
+				result.mode = MODE_FIELDTESTER_V2;
+				result.gw = num_gateways;
+				result.lat = g_last_lat;
+				result.lng = g_last_long;
+				result.min_rssi = 0;
+				result.max_rssi = max_rssi;
+				result.max_snr = max_snr;
+				result.rx_rssi = last_rssi;
+				result.rx_snr = last_snr;
+				result.min_dst = min_distance;
+				result.max_dst = max_distance;
+				result.demod = 0;
+				result.lost = plr;
+				result.tx_dr = api.lorawan.dr.get();
+				write_sd_entry();
 			}
-			else
+			if (has_oled && !g_settings_ui)
 			{
-				get_mcu_time();
+				oled_clear();
+				oled_write_header((char *)"RAK FieldTester V2");
+
+				sprintf(line_str, "DL RX SNR: %d RSSI: %d", last_snr, last_rssi);
+				oled_write_line(0, 0, line_str);
+				sprintf(line_str, "UL TX SNR: %d RSSI: %d", max_snr, max_rssi);
+				oled_write_line(1, 0, line_str);
+				sprintf(line_str, "GW(s): %d\n", num_gateways);
+				oled_write_line(2, 0, line_str);
+				oled_write_line(2, 50, "Min");
+				oled_write_line(2, 80, "Max");
+				oled_write_line(3, 0, "Distance");
+
+				if (g_custom_parameters.location_on)
+				{
+					sprintf(line_str, "%d", min_distance);
+					oled_write_line(3, 50, line_str);
+					sprintf(line_str, "%d", max_distance);
+					oled_write_line(3, 80, line_str);
+					sprintf(line_str, "L %.6f:%.6f", g_last_lat, g_last_long);
+					oled_write_line(4, 0, line_str);
+				}
+				else
+				{
+					sprintf(line_str, "NA");
+					oled_write_line(3, 50, line_str);
+					oled_write_line(3, 80, line_str);
+					sprintf(line_str, "Location NA");
+					oled_write_line(4, 0, line_str);
+				}
+				oled_display();
 			}
-			result.year = g_date_time.year;
-			result.month = g_date_time.month;
-			result.day = g_date_time.date;
-			result.hour = g_date_time.hour;
-			result.min = g_date_time.minute;
-			result.sec = g_date_time.second;
-			result.mode = MODE_FIELDTESTER;
-			result.gw = num_gateways;
-			result.lat = g_last_lat;
-			result.lng = g_last_long;
-			result.min_rssi = min_rssi;
-			result.max_rssi = max_rssi;
-			result.rx_rssi = last_rssi;
-			result.rx_snr = last_snr;
-			result.min_dst = min_distance;
-			result.max_dst = max_distance;
-			result.demod = 0;
-			result.lost = packet_lost;
-			result.tx_dr = api.lorawan.dr.get();
-			write_sd_entry();
 		}
-		if (has_oled && !g_settings_ui)
+		else
 		{
-			oled_clear();
-			oled_write_header((char *)"RAK FieldTester");
+			int16_t min_rssi = field_tester_pckg[1] - 200;
+			int16_t max_rssi = field_tester_pckg[2] - 200;
+			int16_t min_distance = field_tester_pckg[3] * 250;
+			int16_t max_distance = field_tester_pckg[4] * 250;
+			int8_t num_gateways = field_tester_pckg[5];
+			MYLOG("APP", "+EVT:FieldTester %d gateways", num_gateways);
+			MYLOG("APP", "+EVT:RSSI min %d max %d", min_rssi, max_rssi);
+			MYLOG("APP", "+EVT:Distance min %d max %d", min_distance, max_distance);
 
-			sprintf(line_str, "DL RX SNR: %d RSSI: %d", last_snr, last_rssi);
-			oled_write_line(0, 0, line_str);
-			sprintf(line_str, "GW(s): %d\n", num_gateways);
-			oled_write_line(1, 0, line_str);
-			oled_write_line(1, 50, "RSSI");
-			oled_write_line(1, 80, "Distance");
-			oled_write_line(2, 0, "Min");
-			oled_write_line(3, 0, "Max");
-
-			sprintf(line_str, "%d", min_rssi);
-			oled_write_line(2, 50, line_str);
-			sprintf(line_str, "%d", max_rssi);
-			oled_write_line(3, 50, line_str);
-
-			if (g_custom_parameters.location_on)
+			if (has_sd)
 			{
-				sprintf(line_str, "%d", min_distance);
-				oled_write_line(2, 80, line_str);
-				sprintf(line_str, "%d", max_distance);
-				oled_write_line(3, 80, line_str);
-				sprintf(line_str, "L %.6f:%.6f", g_last_lat, g_last_long);
-				oled_write_line(4, 0, line_str);
+				if (has_rtc)
+				{
+					read_rak12002();
+				}
+				else
+				{
+					get_mcu_time();
+				}
+				result.year = g_date_time.year;
+				result.month = g_date_time.month;
+				result.day = g_date_time.date;
+				result.hour = g_date_time.hour;
+				result.min = g_date_time.minute;
+				result.sec = g_date_time.second;
+				result.mode = MODE_FIELDTESTER;
+				result.gw = num_gateways;
+				result.lat = g_last_lat;
+				result.lng = g_last_long;
+				result.min_rssi = min_rssi;
+				result.max_rssi = max_rssi;
+				result.rx_rssi = last_rssi;
+				result.rx_snr = last_snr;
+				result.min_dst = min_distance;
+				result.max_dst = max_distance;
+				result.demod = 0;
+				result.lost = packet_lost;
+				result.tx_dr = api.lorawan.dr.get();
+				write_sd_entry();
 			}
-			else
+			if (has_oled && !g_settings_ui)
 			{
-				sprintf(line_str, "NA");
-				oled_write_line(2, 80, line_str);
-				oled_write_line(3, 80, line_str);
-				sprintf(line_str, "Location NA");
-				oled_write_line(4, 0, line_str);
+				oled_clear();
+				oled_write_header((char *)"RAK FieldTester");
+
+				sprintf(line_str, "DL RX SNR: %d RSSI: %d", last_snr, last_rssi);
+				oled_write_line(0, 0, line_str);
+				sprintf(line_str, "GW(s): %d\n", num_gateways);
+				oled_write_line(1, 0, line_str);
+				oled_write_line(1, 50, "RSSI");
+				oled_write_line(1, 80, "Distance");
+				oled_write_line(2, 0, "Min");
+				oled_write_line(3, 0, "Max");
+
+				sprintf(line_str, "%d", min_rssi);
+				oled_write_line(2, 50, line_str);
+				sprintf(line_str, "%d", max_rssi);
+				oled_write_line(3, 50, line_str);
+
+				if (g_custom_parameters.location_on)
+				{
+					sprintf(line_str, "%d", min_distance);
+					oled_write_line(2, 80, line_str);
+					sprintf(line_str, "%d", max_distance);
+					oled_write_line(3, 80, line_str);
+					sprintf(line_str, "L %.6f:%.6f", g_last_lat, g_last_long);
+					oled_write_line(4, 0, line_str);
+				}
+				else
+				{
+					sprintf(line_str, "NA");
+					oled_write_line(2, 80, line_str);
+					oled_write_line(3, 80, line_str);
+					sprintf(line_str, "Location NA");
+					oled_write_line(4, 0, line_str);
+				}
+				oled_display();
 			}
-			oled_display();
 		}
 	}
-	else if (display_reason == 7) // Field Tester no downlink packet (only FieldTester mode )
+	else if (display_reason == 7) // FieldTester no downlink packet (only FieldTester mode )
 	{
 		MYLOG("APP", "+EVT:FieldTester no downlink");
 
@@ -876,8 +994,14 @@ void handle_display(void *reason)
 		if (has_oled && !g_settings_ui)
 		{
 			oled_clear();
-			oled_write_header((char *)"RAK FieldTester");
-
+			if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
+			{
+				oled_write_header((char *)"RAK FieldTester");
+			}
+			else
+			{
+				oled_write_header((char *)"RAK FieldTester V2");
+			}
 			sprintf(line_str, "No Downlink received");
 			oled_write_line(0, 0, line_str);
 			sprintf(line_str, "L %.6f:%.6f", g_last_lat, g_last_long);
@@ -983,7 +1107,7 @@ void recv_cb_lpw(SERVICE_LORA_RECEIVE_T *data)
 		MYLOG("RX-CB", "fPort 0");
 		return;
 	}
-	if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
+	if ((g_custom_parameters.test_mode == MODE_FIELDTESTER) || (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2))
 	{
 		if (data->Port == 2)
 		{
@@ -1011,7 +1135,7 @@ void send_cb_lpw(int32_t status)
 		MYLOG("APP", "LMC status %d\n", status);
 		tx_fail_status = status;
 
-		if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
+		if ((g_custom_parameters.test_mode == MODE_FIELDTESTER) || (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2))
 		{
 			packet_lost++;
 			display_reason = 7;
@@ -1039,7 +1163,7 @@ void send_cb_lpw(int32_t status)
 void linkcheck_cb_lpw(SERVICE_LORA_LINKCHECK_T *data)
 {
 	tx_active = false;
-	if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
+	if ((g_custom_parameters.test_mode == MODE_FIELDTESTER) || (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2))
 	{
 		return;
 	}
@@ -1192,6 +1316,10 @@ void setup(void)
 	digitalWrite(LED_BLUE, LOW);
 
 	// Initialize custom AT commands
+	if (!init_app_ver_at())
+	{
+		MYLOG("APP", "Failed to initialize App Version AT command");
+	}
 	if (!init_status_at())
 	{
 		MYLOG("APP", "Failed to initialize Status AT command");
@@ -1225,7 +1353,7 @@ void setup(void)
 	init_acc(false);
 
 	// Initialize GNSS (set to sleep as default)
-	if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
+	if ((g_custom_parameters.test_mode == MODE_FIELDTESTER) || (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2))
 	{
 		MYLOG("APP", "Init GNSS as active");
 		has_gnss = init_gnss(true);
@@ -1320,7 +1448,15 @@ void setup(void)
 		oled_add_line((char *)"Start testing");
 		break;
 	case MODE_FIELDTESTER:
-		oled_add_line((char *)"Field Tester mode");
+		oled_add_line((char *)"FieldTester mode");
+		if (!api.lorawan.njs.get())
+		{
+			oled_add_line((char *)"Wait for join");
+		}
+		set_field_tester();
+		break;
+	case MODE_FIELDTESTER_V2:
+		oled_add_line((char *)"FieldTester V2 mode");
 		if (!api.lorawan.njs.get())
 		{
 			oled_add_line((char *)"Wait for join");
@@ -1337,7 +1473,7 @@ void setup(void)
 	// 	digitalWrite(WB_IO2, LOW);
 	// }
 
-	sprintf(line_str, "Test interval %lds", g_custom_parameters.send_interval / 1000);
+	sprintf(line_str, "Test interval  %lds", g_custom_parameters.send_interval / 1000);
 	oled_add_line(line_str);
 
 	// Create timer for periodic sending
@@ -1462,7 +1598,7 @@ void set_p2p(void)
 }
 
 /**
- * @brief Set the module into Field Tester Mode
+ * @brief Set the module into FieldTester Mode
  *
  */
 void set_field_tester(void)

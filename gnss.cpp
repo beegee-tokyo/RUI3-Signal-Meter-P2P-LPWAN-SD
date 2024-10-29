@@ -115,7 +115,7 @@ bool init_gnss(bool active)
 		}
 
 		// Keep GNSS active if forced in setup ==> Leads to faster battery drainage!
-		if (g_custom_parameters.test_mode == MODE_FIELDTESTER)
+		if ((g_custom_parameters.test_mode == MODE_FIELDTESTER) || (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2))
 		{
 			if (!g_custom_parameters.location_on)
 			{
@@ -284,7 +284,14 @@ bool poll_gnss(void)
 			return false;
 		}
 
-		g_solution_data.addGNSS_T(latitude, longitude, altitude / 1000, accuracy, satellites);
+		if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
+		{
+			g_solution_data.addGNSS_T2(latitude, longitude, (int16_t)packet_num);
+		}
+		else
+		{
+			g_solution_data.addGNSS_T(latitude, longitude, altitude / 1000, accuracy, satellites);
+		}
 
 		g_last_lat = latitude / 10000000.0;
 		g_last_long = longitude / 10000000.0;
@@ -306,7 +313,14 @@ bool poll_gnss(void)
 		accuracy = 1;
 		satellites = 5;
 
-		g_solution_data.addGNSS_T(latitude, longitude, altitude, accuracy, satellites);
+		if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
+		{
+			g_solution_data.addGNSS_T2(latitude, longitude, (int16_t)packet_num);
+		}
+		else
+		{
+			g_solution_data.addGNSS_T(latitude, longitude, altitude, accuracy, satellites);
+		}
 
 		has_gnss_location = true;
 
@@ -400,7 +414,7 @@ void gnss_handler(void *)
 
 			MYLOG("GNSS", "Location timeout");
 			api.system.timer.stop(RAK_TIMER_3);
-			// If no location found, Field Tester does not send data
+			// If no location found, FieldTester does not send data
 			if (has_oled && !g_settings_ui)
 			{
 				sprintf(line_str, "No valid location found");

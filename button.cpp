@@ -71,9 +71,9 @@ char *settings_menu[] = {"Back", "Interval", "Location", "Display Saver"};
 uint8_t settings_menu_len = 4;
 
 /** Content of test mode menu */
-char *mode_menu[] = {"Back", "LPW LinkCheck", "P2P", "Field Tester"};
+char *mode_menu[] = {"Back", "LPW LinkCheck", "P2P", "FieldTester", "FieldTester V2"};
 /** Size of test mode menu */
-uint8_t mode_menu_len = 4;
+uint8_t mode_menu_len = 5;
 
 /** Content of P2P settings menu */
 char *settings_p2p_menu[] = {"Back", "Freq", "SF", "BW", "CR", "TX"};
@@ -280,7 +280,7 @@ void save_n_reboot(void)
 	// If location setting has changed, need to initialize the GNSS module
 	if (g_last_settings.location_on != g_custom_parameters.location_on)
 	{
-		if (g_last_settings.test_mode == MODE_FIELDTESTER)
+		if ((g_last_settings.test_mode == MODE_FIELDTESTER) || (g_last_settings.test_mode == MODE_FIELDTESTER_V2))
 		{
 			init_gnss(true);
 		}
@@ -364,10 +364,11 @@ void save_n_reboot(void)
 		oled_add_line((char *)"P2P mode");
 		break;
 	case MODE_FIELDTESTER:
-		oled_add_line((char *)"Field Tester mode");
+	case MODE_FIELDTESTER_V2:
+		oled_add_line((char *)"FieldTester V2 mode");
 		break;
 	}
-	sprintf(line_str, "Test interval %lds", g_custom_parameters.send_interval / 1000);
+	sprintf(line_str, "Test interval  %lds", g_custom_parameters.send_interval / 1000);
 	oled_add_line(line_str);
 
 	if (g_custom_parameters.send_interval != 0)
@@ -475,6 +476,11 @@ void handle_button(void)
 					sel_menu = T_LORAP2P_MENU;
 					display_show_menu(settings_p2p_menu, settings_p2p_menu_len, sel_menu, 255, g_last_settings.display_saver, g_last_settings.location_on);
 				}
+				break;
+			case T_MODE_MENU:
+				g_last_settings.test_mode = MODE_FIELDTESTER_V2;
+				selected_item = g_last_settings.test_mode + 2;
+				display_show_menu(mode_menu, mode_menu_len, sel_menu, selected_item, g_last_settings.display_saver, g_last_settings.location_on);
 				break;
 			case T_LORAWAN_MENU:
 				sel_menu = S_LPW_BAND;

@@ -160,7 +160,7 @@ uint8_t WisCayenne::addGNSS_H(int32_t latitude, int32_t longitude, int16_t altit
 }
 
 /**
- * @brief Add GNSS data in Field Tester format
+ * @brief Add GNSS data in FieldTester format
  *
  * @param latitude Latitude as read from the GNSS receiver
  * @param longitude Longitude as read from the GNSS receiver
@@ -247,6 +247,96 @@ uint8_t WisCayenne::addGNSS_T(int32_t latitude, int32_t longitude, int16_t altit
 	_buffer[_cursor++] = ((altitude + 1000)) & 0xFF;
 	_buffer[_cursor++] = (uint8_t)(accuracy / 10.0);
 	_buffer[_cursor++] = sats;
+
+	return _cursor;
+}
+
+/**
+ * @brief Add GNSS data in FieldTester V2 format
+ *
+ * @param latitude Latitude as read from the GNSS receiver
+ * @param longitude Longitude as read from the GNSS receiver
+ * @param sequence_id ID for this packet
+ * @return uint8_t bytes added to the data packet
+ */
+uint8_t WisCayenne::addGNSS_T2(int32_t latitude, int32_t longitude, int16_t sequence_id)
+{
+	// check buffer overflow
+	if ((_cursor + LPP_GPST_SIZE) > _maxsize)
+	{
+		_error = LPP_ERROR_OVERFLOW;
+		return 0;
+	}
+
+	// latitude = latitude / 1000;
+	// longitude = longitude / 1000;
+	// altitude = altitude / 1000;
+
+	uint64_t t = 0;
+	uint64_t l = 0;
+	if (longitude < 0)
+	{
+		t |= 0x800000000000L;
+		l = -longitude;
+	}
+	else
+	{
+		l = longitude;
+	}
+	if (l / 10000000 >= 180)
+	{
+		l = 8372093;
+	}
+	else
+	{
+		if (l < 107)
+		{
+			l = 0;
+		}
+		else
+		{
+			l = (l - 107) / 215;
+		}
+	}
+	t |= (l & 0x7FFFFF);
+
+	if (latitude < 0)
+	{
+		t |= 0x400000000000L;
+		l = -latitude;
+	}
+	else
+	{
+		l = latitude;
+	}
+	if (l / 10000000 >= 90)
+	{
+		l = 8333333;
+	}
+	else
+	{
+		if (l < 53)
+		{
+			l = 0;
+		}
+		else
+		{
+			l = (l - 53) / 108;
+		}
+	}
+	t |= (l << 23) & 0x3FFFFF800000;
+
+	// Add the location to the package
+	_buffer[_cursor++] = (t >> 40) & 0xFF;
+	_buffer[_cursor++] = (t >> 32) & 0xFF;
+	_buffer[_cursor++] = (t >> 24) & 0xFF;
+	_buffer[_cursor++] = (t >> 16) & 0xFF;
+	_buffer[_cursor++] = (t >> 8) & 0xFF;
+	_buffer[_cursor++] = (t) & 0xFF;
+	_buffer[_cursor++] = 0x56; // 'V'
+	_buffer[_cursor++] = 0x32; // '2'
+	_buffer[_cursor++] = (sequence_id >> 8) & 0xff;
+	_buffer[_cursor++] = sequence_id & 0xff;
 
 	return _cursor;
 }
