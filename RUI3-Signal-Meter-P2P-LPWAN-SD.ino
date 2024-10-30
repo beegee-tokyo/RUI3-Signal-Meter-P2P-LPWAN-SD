@@ -104,7 +104,7 @@ void send_packet(void *data)
 					}
 					else
 					{
-						oled_write_header((char *)"RAK FieldTester V2");
+						oled_write_header((char *)"RAK FieldTest V2");
 					}
 					oled_add_line((char *)"Start location acquisition");
 				}
@@ -392,7 +392,7 @@ void handle_display(void *reason)
 		}
 		else if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
 		{
-			sprintf(line_str, "RAK FieldTester V2");
+			sprintf(line_str, "RAK FieldTest V2");
 		}
 		else
 		{
@@ -791,15 +791,17 @@ void handle_display(void *reason)
 	}
 	else if (display_reason == 6) // FieldTester downlink packet (only FieldTester mode )
 	{
+		// 01 01 a7 00 00 02 01 d5 09 20 ca
 		if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
 		{
+			MYLOG("APP", "%d %d %d %d %d %d %d %d ", field_tester_pckg[0], field_tester_pckg[1], field_tester_pckg[2], field_tester_pckg[3], field_tester_pckg[4], field_tester_pckg[5], field_tester_pckg[6], field_tester_pckg[7]);
 			uint16_t plr = ((uint16_t)field_tester_pckg[0] << 8) + (uint16_t)field_tester_pckg[1];
 			int8_t max_rssi = field_tester_pckg[2] - 200;
-			int16_t min_distance = field_tester_pckg[3] * 250;
-			int16_t max_distance = field_tester_pckg[4] * 250;
+			int16_t min_distance = (int16_t)field_tester_pckg[3] * 250;
+			int16_t max_distance = (int16_t)field_tester_pckg[4] * 250;
 			int8_t num_gateways = field_tester_pckg[5] >> 4;
 			int16_t seq_id = (int16_t)field_tester_pckg[5] & 0x0F + (int16_t)field_tester_pckg[6];
-			int8_t max_snr = field_tester_pckg[7];
+			int8_t max_snr = field_tester_pckg[7] -200;
 			uint8_t gw_eui[8] = {0xac, 0x1f, 0x09, 0xff, 0xfe, 0x00, 0x00, 0x00};
 			gw_eui[5] = field_tester_pckg[8];
 			gw_eui[6] = field_tester_pckg[9];
@@ -842,7 +844,7 @@ void handle_display(void *reason)
 			if (has_oled && !g_settings_ui)
 			{
 				oled_clear();
-				oled_write_header((char *)"RAK FieldTester V2");
+				oled_write_header((char *)"RAK FieldTest V2");
 
 				sprintf(line_str, "DL RX SNR: %d RSSI: %d", last_snr, last_rssi);
 				oled_write_line(0, 0, line_str);
@@ -1000,7 +1002,7 @@ void handle_display(void *reason)
 			}
 			else
 			{
-				oled_write_header((char *)"RAK FieldTester V2");
+				oled_write_header((char *)"RAK FieldTest V2");
 			}
 			sprintf(line_str, "No Downlink received");
 			oled_write_line(0, 0, line_str);
