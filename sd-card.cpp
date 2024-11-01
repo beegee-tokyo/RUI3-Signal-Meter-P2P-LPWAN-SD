@@ -378,7 +378,7 @@ bool create_sd_file(void)
 		}
 		else if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
 		{
-			log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"max RSSI\";\"max SNR\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\";\"TX DR\";\"Lost\"");
+			log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"max RSSI\";\"max SNR\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\";\"TX DR\";\"PLR\"");
 		}
 		else // P2P mode
 		{
@@ -471,14 +471,14 @@ void write_sd_entry(void)
 		}
 		else if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
 		{
-			// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"max RSSI\";\"max SNR\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\";\"TX DR\";\"Lost\"");
-			bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d %02d:%02d:%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d;%d;%d",
+			// log_file.println("\"time\";\"Mode\";\"Gw\";\"Lat\";\"Lng\";\"max RSSI\";\"max SNR\";\"RX RSSI\";\"RX SNR\";\"min Dist\";\"max Dist\";\"TX DR\";\"PLR\"");
+			bytes_to_write = snprintf(line_entry, 511, "%04d-%02d-%02d %02d:%02d:%02d;%d;%d;%.6f;%.6f;%d;%d;%d;%d;%d;%d;%d;%.1f",
 									  result.year, result.month, result.day, result.hour, result.min, result.sec,
 									  result.mode, result.gw,
 									  result.lat, result.lng,
 									  result.max_rssi, result.max_snr, result.rx_rssi,
 									  result.rx_snr,
-									  result.min_dst, result.max_dst, result.tx_dr, result.lost);
+									  result.min_dst, result.max_dst, result.tx_dr, (float)result.lost / 10.0f);
 		}
 		else // LoRa P2P
 		{

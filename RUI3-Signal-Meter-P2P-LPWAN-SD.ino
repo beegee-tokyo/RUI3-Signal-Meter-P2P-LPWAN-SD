@@ -28,6 +28,8 @@ volatile int32_t packet_lost = 0;
 volatile uint8_t last_dr = 0;
 /** TX fail reason (only LPW mode)*/
 volatile int32_t tx_fail_status;
+/** Packet Loss Rate (only FieldTester V2 mode) */
+volatile float plr;
 
 /** TX active flag (used for manual sending in FieldTester Mode and P2P mode) */
 volatile bool tx_active = false;
@@ -133,6 +135,7 @@ void send_packet(void *data)
 					{
 						return;
 					}
+
 					// Always send confirmed packet to make sure a reply is received
 					if (!api.lorawan.send(g_solution_data.getSize(), g_solution_data.getBuffer(), 1, true, 1))
 					{
@@ -140,6 +143,8 @@ void send_packet(void *data)
 						tx_active = false;
 						ready_to_dump = true;
 					}
+					// Increase sent packet number
+					packet_num++;
 				}
 				else
 				{
@@ -184,6 +189,8 @@ void send_packet(void *data)
 						{
 							tx_active = true;
 						}
+						// Increase sent packet number
+						packet_num++;
 					}
 					else // Wait for location fix
 					{
@@ -251,6 +258,8 @@ void send_packet(void *data)
 				MYLOG("APP", "LoRaWAN send returned error");
 				tx_active = false;
 			}
+			// Increase sent packet number
+			packet_num++;
 		}
 	}
 	else // LinkCheck or LoRa P2P
@@ -330,6 +339,8 @@ void send_packet(void *data)
 						MYLOG("APP", "LoRaWAN send returned error");
 						ready_to_dump = true;
 					}
+					// Increase sent packet number
+					packet_num++;
 				}
 				else
 				{
@@ -344,6 +355,8 @@ void send_packet(void *data)
 						MYLOG("APP", "LoRaWAN send returned error");
 						ready_to_dump = true;
 					}
+					// Increase sent packet number
+					packet_num++;
 				}
 			}
 			else
@@ -362,6 +375,8 @@ void send_packet(void *data)
 			// Always send with CAD
 			api.lora.psend(g_custom_parameters.custom_packet_len, g_custom_parameters.custom_packet, true);
 			tx_active = true;
+			// Increase sent packet number
+			packet_num++;
 		}
 	}
 }
@@ -794,14 +809,14 @@ void handle_display(void *reason)
 		// 01 01 a7 00 00 02 01 d5 09 20 ca
 		if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
 		{
-			MYLOG("APP", "%d %d %d %d %d %d %d %d ", field_tester_pckg[0], field_tester_pckg[1], field_tester_pckg[2], field_tester_pckg[3], field_tester_pckg[4], field_tester_pckg[5], field_tester_pckg[6], field_tester_pckg[7]);
-			uint16_t plr = ((uint16_t)field_tester_pckg[0] << 8) + (uint16_t)field_tester_pckg[1];
+			uint16_t plr_i = ((uint16_t)field_tester_pckg[0] << 8) + (uint16_t)field_tester_pckg[1];
+			plr = plr_i / 10;
 			int8_t max_rssi = field_tester_pckg[2] - 200;
 			int16_t min_distance = (int16_t)field_tester_pckg[3] * 250;
 			int16_t max_distance = (int16_t)field_tester_pckg[4] * 250;
 			int8_t num_gateways = field_tester_pckg[5] >> 4;
 			int16_t seq_id = (int16_t)field_tester_pckg[5] & 0x0F + (int16_t)field_tester_pckg[6];
-			int8_t max_snr = field_tester_pckg[7] -200;
+			int8_t max_snr = field_tester_pckg[7] - 200;
 			uint8_t gw_eui[8] = {0xac, 0x1f, 0x09, 0xff, 0xfe, 0x00, 0x00, 0x00};
 			gw_eui[5] = field_tester_pckg[8];
 			gw_eui[6] = field_tester_pckg[9];
@@ -837,7 +852,7 @@ void handle_display(void *reason)
 				result.min_dst = min_distance;
 				result.max_dst = max_distance;
 				result.demod = 0;
-				result.lost = plr;
+				result.lost = plr_i;
 				result.tx_dr = api.lorawan.dr.get();
 				write_sd_entry();
 			}
@@ -862,7 +877,8 @@ void handle_display(void *reason)
 					oled_write_line(3, 50, line_str);
 					sprintf(line_str, "%d", max_distance);
 					oled_write_line(3, 80, line_str);
-					sprintf(line_str, "L %.6f:%.6f", g_last_lat, g_last_long);
+					sprintf(line_str, "PLR: %.1f   Sent: %d", plr, packet_num);
+					// sprintf(line_str, "L %.6f:%.6f", g_last_lat, g_last_long);
 					oled_write_line(4, 0, line_str);
 				}
 				else
@@ -870,7 +886,8 @@ void handle_display(void *reason)
 					sprintf(line_str, "NA");
 					oled_write_line(3, 50, line_str);
 					oled_write_line(3, 80, line_str);
-					sprintf(line_str, "Location NA");
+					sprintf(line_str, "PLR: %.1f   Sent: %d", plr, packet_num);
+					// sprintf(line_str, "Location NA");
 					oled_write_line(4, 0, line_str);
 				}
 				oled_display();
@@ -943,7 +960,8 @@ void handle_display(void *reason)
 					oled_write_line(2, 80, line_str);
 					sprintf(line_str, "%d", max_distance);
 					oled_write_line(3, 80, line_str);
-					sprintf(line_str, "L %.6f:%.6f", g_last_lat, g_last_long);
+					sprintf(line_str, "Lost: %d   Sent: %d", packet_lost, packet_num);
+					// sprintf(line_str, "L %.6f:%.6f", g_last_lat, g_last_long);
 					oled_write_line(4, 0, line_str);
 				}
 				else
@@ -951,7 +969,8 @@ void handle_display(void *reason)
 					sprintf(line_str, "NA");
 					oled_write_line(2, 80, line_str);
 					oled_write_line(3, 80, line_str);
-					sprintf(line_str, "Location NA");
+					sprintf(line_str, "Lost: %d   Sent: %d", packet_lost, packet_num);
+					// sprintf(line_str, "Location NA");
 					oled_write_line(4, 0, line_str);
 				}
 				oled_display();
@@ -1006,7 +1025,15 @@ void handle_display(void *reason)
 			}
 			sprintf(line_str, "No Downlink received");
 			oled_write_line(0, 0, line_str);
-			sprintf(line_str, "L %.6f:%.6f", g_last_lat, g_last_long);
+			if (g_custom_parameters.test_mode == MODE_FIELDTESTER_V2)
+			{
+				sprintf(line_str, "PLR: %.1f   Sent: %d", plr, packet_num);
+			}
+			else
+			{
+				sprintf(line_str, "Lost: %d   Sent: %d", packet_lost, packet_num);
+			}
+			// sprintf(line_str, "L %.6f:%.6f", g_last_lat, g_last_long);
 			oled_write_line(4, 0, line_str);
 			oled_display();
 		}
@@ -1083,7 +1110,7 @@ void recv_cb_p2p(rui_lora_p2p_recv_t data)
 {
 	last_rssi = data.Rssi;
 	last_snr = data.Snr;
-	packet_num++;
+	// packet_num++;
 	tx_active = false;
 
 	display_reason = 1;
@@ -1101,7 +1128,7 @@ void recv_cb_lpw(SERVICE_LORA_RECEIVE_T *data)
 	last_snr = data->Snr;
 	last_dr = data->RxDatarate;
 
-	packet_num++;
+	// packet_num++;
 	tx_active = false;
 
 	if (data->Port == 0)
@@ -1150,7 +1177,7 @@ void send_cb_lpw(int32_t status)
 			api.system.timer.start(RAK_TIMER_1, 250, &display_reason);
 		}
 	}
-	else
+	else if (tx_active)
 	{
 		display_reason = 8;
 		api.system.timer.start(RAK_TIMER_1, 250, &display_reason);
@@ -1337,6 +1364,10 @@ void setup(void)
 	if (!init_custom_pckg_at())
 	{
 		MYLOG("APP", "Failed to initialize Custom Packet AT command");
+	}
+	if (!init_product_info_at())
+	{
+		MYLOG("APP", "Failed to initialize Product Info AT command");
 	}
 
 	// Get saved custom settings

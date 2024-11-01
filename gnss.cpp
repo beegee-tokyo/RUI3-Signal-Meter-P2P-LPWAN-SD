@@ -397,6 +397,8 @@ void gnss_handler(void *)
 			{
 				tx_active = true;
 			}
+			// Increase sent packet number
+			packet_num++;
 		}
 		else
 		{

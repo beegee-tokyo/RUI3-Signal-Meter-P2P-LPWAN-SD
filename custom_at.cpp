@@ -42,6 +42,9 @@ bool crc_initialized = false;
 /** Flag if log dump is possible */
 volatile bool ready_to_dump = true;
 
+/** Flag if ATC+PRD_INFO was used */
+bool prd_info_requested = false;
+
 // Forward declarations
 int interval_send_handler(SERIAL_PORT port, char *cmd, stParam *param);
 int status_handler(SERIAL_PORT port, char *cmd, stParam *param);
@@ -50,7 +53,7 @@ int custom_pckg_handler(SERIAL_PORT port, char *cmd, stParam *param);
 int dump_logs_handler(SERIAL_PORT port, char *cmd, stParam *param);
 int rtc_command_handler(SERIAL_PORT port, char *cmd, stParam *param);
 int app_ver_handler(SERIAL_PORT port, char *cmd, stParam *param);
-
+int product_info_handler(SERIAL_PORT port, char *cmd, stParam *param);
 /**
  * @brief Add send interval AT command
  *
@@ -309,6 +312,10 @@ int dump_logs_handler(SERIAL_PORT port, char *cmd, stParam *param)
 	{
 		MYLOG("AT_CMD", "No SD card detected");
 		return AT_PARAM_ERROR;
+	}
+	if (prd_info_requested)
+	{
+		return AT_OK;
 	}
 
 	if (param->argc == 1 && !strcmp(param->argv[0], "?"))
@@ -656,6 +663,45 @@ int app_ver_handler(SERIAL_PORT port, char *cmd, stParam *param)
 	return AT_ERROR;
 }
 
+bool init_product_info_at(void)
+{
+	/*****************************************************************/
+	/* Add when device is available in WisToolBox                    */
+	/*****************************************************************/
+
+	// Change HW model to RAK10706
+	// api.system.hwModel.set("RAK10706");
+	api.system.hwModel.set("RAK4630");
+
+	return api.system.atMode.add((char *)"PRD_INFO",
+								 (char *)"Get device Information of RAK10706",
+								 (char *)"PRD_INFO", product_info_handler,
+								 RAK_ATCMD_PERM_READ);
+}
+
+int product_info_handler(SERIAL_PORT port, char *cmd, stParam *param)
+{
+	prd_info_requested = true;
+	return AT_COMMAND_NOT_FOUND;
+
+	/*****************************************************************/
+	/* Add when device is available in WisToolBox                    */
+	/*****************************************************************/
+
+	// Return 
+	uint8_t key_eui[16] = {0};
+	if (param->argc == 1 && !strcmp(param->argv[0], "?"))
+	{
+		api.lorawan.deui.get(key_eui, 8);
+		AT_PRINTF("%s=VC:V%d.%d.%d:%02X%02X%02X%02X%02X%02X%02X%02X:RAK10706:%02X%02X%02X%02X%02X%02X%02X%02X", cmd, SW_VERSION_0, SW_VERSION_1, SW_VERSION_2,
+				  key_eui[0], key_eui[1], key_eui[2], key_eui[3],
+				  key_eui[4], key_eui[5], key_eui[6], key_eui[7],
+				  key_eui[0], key_eui[1], key_eui[2], key_eui[3],
+				  key_eui[4], key_eui[5], key_eui[6], key_eui[7]);
+		return AT_OK;
+	}
+	return AT_ERROR;
+}
 /**
  * @brief Get setting from flash
  *
